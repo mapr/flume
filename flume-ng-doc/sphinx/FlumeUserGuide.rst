@@ -394,7 +394,7 @@ components:
 
   # properties of hdfs-Cluster1-sink
   agent_foo.sinks.hdfs-Cluster1-sink.type = hdfs
-  agent_foo.sinks.hdfs-Cluster1-sink.hdfs.path = hdfs://namenode/flume/webdata
+  agent_foo.sinks.hdfs-Cluster1-sink.hdfs.path = maprfs:///flume/webdata
 
   #...
 
@@ -1209,7 +1209,7 @@ Name                    Default       Description
 ======================  ============  ======================================================================
 **channel**             --
 **type**                --            The component type name, needs to be ``hdfs``
-**hdfs.path**           --            HDFS directory path (eg hdfs://namenode/flume/webdata/)
+**hdfs.path**           --            MapR-FS directory path (eg maprfs:///flume/webdata/)
 hdfs.filePrefix         FlumeData     Name prefixed to files created by Flume in hdfs directory
 hdfs.fileSuffix         --            Suffix to append to file (eg ``.avro`` - *NOTE: period is not automatically added*)
 hdfs.rollInterval       30            Number of seconds to wait before rolling current file
@@ -1219,7 +1219,7 @@ hdfs.rollCount          10            Number of events written to file before it
                                       (0 = never roll based on number of events)
 hdfs.idleTimeout        0             Timeout after which inactive files get closed
                                       (0 = disable automatic closing of idle files)
-hdfs.batchSize          100           number of events written to file before it is flushed to HDFS
+hdfs.batchSize          100           number of events written to file before it is flushed to MapR-FS
 hdfs.codeC              --            Compression codec. one of following : gzip, bzip2, lzo, snappy
 hdfs.fileType           SequenceFile  File format: currently ``SequenceFile``, ``DataStream`` or ``CompressedStream``
                                       (1)DataStream will not compress output file and please don't set codeC

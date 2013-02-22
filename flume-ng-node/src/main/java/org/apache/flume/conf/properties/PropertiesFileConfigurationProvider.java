@@ -184,7 +184,7 @@ import org.slf4j.LoggerFactory;
  *
  * # hdfsSink configuration
  * host1.sinks.hdfsSink.type = hdfs
- * host1.sinks.hdfsSink.hdfs.path = hdfs://localhost/
+ * host1.sinks.hdfsSink.hdfs.path = maprfs:///
  * host1.sinks.hdfsSink.batchsize = 1000
  * host1.sinks.hdfsSink.runner.type = polling
  * host1.sinks.hdfsSink.runner.polling.interval = 60

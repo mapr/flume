@@ -61,7 +61,7 @@ public class HDFSCompressedDataStream implements HDFSWriter {
     Path dstPath = new Path(filePath);
     FileSystem hdfs = dstPath.getFileSystem(conf);
 
-    if (conf.getBoolean("hdfs.append.support", false) == true && hdfs.isFile
+    if (conf.getBoolean("hdfs.append.support", true) == true && hdfs.isFile
     (dstPath)) {
       fsOut = hdfs.append(dstPath);
     } else {

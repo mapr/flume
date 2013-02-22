@@ -92,7 +92,7 @@ public class TestHDFSEventSink {
     /*
      * FIXME: Use a dynamic path to support concurrent test execution. Also,
      * beware of the case where this path is used for something or when the
-     * Hadoop config points at file:/// rather than hdfs://. We need to find a
+     * Hadoop config points at file:/// rather than maprfs://. We need to find a
      * better way of testing HDFS related functionality.
      */
     testPath = "file:///tmp/flume-test."

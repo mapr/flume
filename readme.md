@@ -1,0 +1,72 @@
+# Welcome to Apache Flume!
+
+Apache Flume is a distributed, reliable, and available service for efficiently
+collecting, aggregating, and moving large amounts of log data. Apache Flume
+has a simple and flexible architecture based on streaming data flows. It is robust
+and fault-tolerant, with tunable reliability mechanisms and many failover and recovery
+mechanisms. The system is centrally managed and allows for intelligent dynamic
+management. Apache Flume uses a simple extensible data model that allows for online
+analytic application.
+
+The Apache Flume 1.x (NG) code line is a refactoring of the first generation
+Flume to solve certain known issues and limitations of the original design.
+
+Apache Flume is open-sourced under the Apache Software Foundation License v2.0.
+
+## Documentation
+
+Documentation is included in the binary distribution under the `/docs` directory.
+Documentation source is located in the `/flume-ng-doc` directory.
+
+The Flume 1.x guide and FAQ are available here:
+
+* [https://cwiki.apache.org/FLUME/flume-ng.html]()
+* [https://cwiki.apache.org/confluence/display/FLUME/Getting+Started]()
+
+## Contact us!
+
+* [Mailing lists](https://cwiki.apache.org/confluence/display/FLUME/Mailing+Lists)
+* IRC channel #flume on [irc.freenode.net]()
+* [Bug and Issue tracker](https://issues.apache.org/jira/browse/FLUME)
+
+## Compiling Flume
+
+Compiling Flume requires the following tools:
+
+* Oracle Java JDK 1.6
+* Apache Maven 3.x
+
+***Note***: The Apache Flume build requires more memory than the default configuration.
+We recommend you set the following Maven options:
+
+`export MAVEN_OPTS="-Xms512m -Xmx1024m -XX:PermSize=256m -XX:MaxPermSize=512m"`
+
+To compile Flume, run `mvn compile`.
+To build a distribution, run `mvn install`.
+
+The final Flume distribution artifacts will be in `$project/flume-ng-dist/target/`.
+
+## Compiling Flume with MapR patches
+
+Clone and checkout the `<flume-version>-mapr` tag or branch of the Apache Flume 
+release version from [GitHub](https://github.com/mapr/flume). For example,
+if you want to compile Flume version 1.3.1, checkout the `1.3.1-mapr` tag.
+
+	$ mkdir flume-1.3.1-mapr
+	$ cd flume-1.3.1-mapr
+	$ git clone git@github.com/mapr/flume.git .
+	$ git checkout flume-1.3.1-mapr
+	$ mvn clean -DskipTests
+
+The command line argument `-DskipTests` is optional and allows you to skip running 
+the unit tests.
+
+### Using Flume artifacts in your Maven Project
+
+Add the following dependency to your project's `pom.xml` file:  
+
+		<dependency>  
+			<groupId>com.mapr.flume</groupId>  
+			<artifactId>flume</artifactId>  
+			<version>${mapr.flume.version}</version>  
+		</dependency>  

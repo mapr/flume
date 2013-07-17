@@ -480,18 +480,6 @@ limitations under the License.
 
   </repositories>
 
-  <distributionManagement>
-    <repository>
-     <id>mapr.staging</id>
-     <name>Mapr Staging Repository</name>
-     <url>${mapr-maven}</url>
-    </repository>
-    <site>
-      <id>apache.website</id>
-      <url>${siteUrlDeployment}</url>
-      <name>Flume Site</name>
-    </site>
-  </distributionManagement>
 
   <build>
 

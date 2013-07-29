@@ -342,12 +342,12 @@ fi
 if [ -z "${FLUME_HOME}" ]; then
   FLUME_HOME=$(cd $(dirname $0)/..; pwd)
 fi
-FLUME_VERSION=1.4.0-mapr
+
 # prepend $FLUME_HOME/lib jars to the specified classpath (if any)
 if [ -n "${FLUME_CLASSPATH}" ] ; then
-  FLUME_CLASSPATH="${FLUME_HOME}/flume-ng-dist/target/flume-${FLUME_VERSION}-bin/flume-${FLUME_VERSION}-bin/lib/*:$FLUME_CLASSPATH"
+  FLUME_CLASSPATH="${FLUME_HOME}/lib/*:$FLUME_CLASSPATH"
 else
-  FLUME_CLASSPATH="${FLUME_HOME}/flume-ng-dist/target/flume-${FLUME_VERSION}-bin/flume-${FLUME_VERSION}-bin/lib/*"
+  FLUME_CLASSPATH="${FLUME_HOME}/lib/*"
 fi
 
 BASEMAPR=${MAPR_HOME:-/opt/mapr}

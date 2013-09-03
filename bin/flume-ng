@@ -247,6 +247,12 @@ opt_dryrun=""
 mode=$1
 shift
 
+BASEMAPR=${MAPR_HOME:-/opt/mapr}
+export HADOOP_HOME=${BASEMAPR}/hadoop/hadoop-0.20.2/
+
+env=$BASEMAPR/conf/env.sh
+[ -f $env ] && . $env
+
 case "$mode" in
   help)
     display_help
@@ -325,6 +331,9 @@ elif [ -f "$opt_conf/flume-env.sh" ]; then
   source "$opt_conf/flume-env.sh"
 fi
 
+# append hadoop.login options
+opt_java_props="${opt_java_props} ${FLUME_LOGIN_OPTS}"
+
 # append command-line java options to stock or env script JAVA_OPTS
 if [ -n "${opt_java_props}" ]; then
   JAVA_OPTS="${JAVA_OPTS} ${opt_java_props}"
@@ -349,12 +358,6 @@ if [ -n "${FLUME_CLASSPATH}" ] ; then
 else
   FLUME_CLASSPATH="${FLUME_HOME}/lib/*"
 fi
-
-BASEMAPR=${MAPR_HOME:-/opt/mapr}
-export HADOOP_HOME=${BASEMAPR}/hadoop/hadoop-0.20.2/
-
-env=$BASEMAPR/conf/env.sh
-[ -f $env ] && . $env
 
 for file in `find ${HADOOP_HOME}/lib/ | egrep -v "slf4j-(api|log4j12).*\.jar"`; do
   FLUME_CLASSPATH="${FLUME_CLASSPATH}:$file"

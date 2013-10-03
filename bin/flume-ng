@@ -332,7 +332,7 @@ elif [ -f "$opt_conf/flume-env.sh" ]; then
 fi
 
 # append hadoop.login options
-opt_java_props="${opt_java_props} ${MAPR_LOGIN_OPTS}"
+opt_java_props="${opt_java_props} ${HYBRID_LOGIN_OPTS}"
 
 # append command-line java options to stock or env script JAVA_OPTS
 if [ -n "${opt_java_props}" ]; then

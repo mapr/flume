@@ -87,6 +87,7 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>${hadoop.common.artifact.id}</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -1031,7 +1032,7 @@ limitations under the License.
       <dependency>
         <groupId>org.hbase</groupId>
         <artifactId>asynchbase</artifactId>
-        <version>1.4.1</version>
+        <version>1.4.1-mapr</version>
         <exclusions>
           <exclusion>
             <groupId>org.slf4j</groupId>

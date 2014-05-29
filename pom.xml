@@ -76,8 +76,8 @@ limitations under the License.
         </property>
       </activation>
       <properties>
-        <hadoop.version>1.0.1</hadoop.version>
-        <hbase.version>0.92.1</hbase.version>
+        <hadoop.version>1.0.3-mapr-3.1.0</hadoop.version>
+        <hbase.version>0.92.2-mapr</hbase.version>
         <hadoop.common.artifact.id>hadoop-core</hadoop.common.artifact.id>
         <thrift.version>0.7.0</thrift.version>
       </properties>
@@ -107,8 +107,8 @@ limitations under the License.
         </property>
       </activation>
       <properties>
-        <hadoop.version>2.0.0-alpha</hadoop.version>
-        <hbase.version>0.94.2</hbase.version>
+        <hadoop.version>2.3.0-mapr-4.0.0-beta</hadoop.version>
+        <hbase.version>0.94.17-mapr-1403</hbase.version>
         <hadoop.common.artifact.id>hadoop-common</hadoop.common.artifact.id>
         <thrift.version>0.8.0</thrift.version>
       </properties>
@@ -782,7 +782,7 @@ limitations under the License.
 
       <dependency>
         <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-common</artifactId>
+        <artifactId>hadoop-core</artifactId>
         <version>${hadoop.version}</version>
       </dependency>
 

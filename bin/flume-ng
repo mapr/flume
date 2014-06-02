@@ -250,12 +250,8 @@ shift
 BASEMAPR=${MAPR_HOME:-/opt/mapr}
 CMD="hadoop version"
 res=`eval $CMD`
-SOURCE="hadoop-2."
-if echo "$res" | grep -q "$SOURCE"; then
-  export HADOOP_HOME=${BASEMAPR}/hadoop/hadoop-2.3.0/
-else
-  export HADOOP_HOME=${BASEMAPR}/hadoop/hadoop-0.20.2/
-fi
+HADOOP_VERSION=`readlink \`which hadoop\` | awk -F "/" '{print$5}'`
+export HADOOP_HOME=${BASEMAPR}/hadoop/${HADOOP_VERSION}/
 
 env=$BASEMAPR/conf/env.sh
 [ -f $env ] && . $env

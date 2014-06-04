@@ -76,8 +76,8 @@ limitations under the License.
         </property>
       </activation>
       <properties>
-        <hadoop.version>1.0.3-mapr-3.1.0</hadoop.version>
-        <hbase.version>0.92.2-mapr</hbase.version>
+        <hadoop.version>1.0.1</hadoop.version>
+        <hbase.version>0.92.1</hbase.version>
         <hadoop.common.artifact.id>hadoop-core</hadoop.common.artifact.id>
         <thrift.version>0.7.0</thrift.version>
       </properties>
@@ -107,8 +107,8 @@ limitations under the License.
         </property>
       </activation>
       <properties>
-        <hadoop.version>2.3.0-mapr-4.0.0-beta</hadoop.version>
-        <hbase.version>0.94.17-mapr-1403</hbase.version>
+        <hadoop.version>2.4.0</hadoop.version>
+        <hbase.version>0.94.2</hbase.version>
         <hadoop.common.artifact.id>hadoop-common</hadoop.common.artifact.id>
         <thrift.version>0.8.0</thrift.version>
       </properties>
@@ -118,11 +118,13 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>${hadoop.common.artifact.id}</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -133,16 +135,19 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-client</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-annotations</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
         </dependencies>
       </dependencyManagement>
@@ -782,7 +787,7 @@ limitations under the License.
 
       <dependency>
         <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-core</artifactId>
+        <artifactId>hadoop-common</artifactId>
         <version>${hadoop.version}</version>
       </dependency>
 

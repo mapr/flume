@@ -29,7 +29,7 @@
     <format>tar.gz</format>
   </formats>
 
-  <baseDirectory>apache-flume-${project.version}-bin</baseDirectory>
+  <baseDirectory>flume-${project.version}-bin</baseDirectory>
 
   <dependencySets>
     <dependencySet>
@@ -38,6 +38,9 @@
       <useProjectArtifact>false</useProjectArtifact>
       <excludes>
         <exclude>org.apache.flume.flume-ng-clients:flume-ng-log4jappender:jar:jar-with-dependencies</exclude>
+        <exclude>com.mapr.hadoop:maprfs</exclude>
+        <exclude>com.mapr.fs:libprotodefs</exclude>
+        <exclude>org.apache.hadoop:hadoop-core</exclude>
       </excludes>
     </dependencySet>
     <dependencySet>

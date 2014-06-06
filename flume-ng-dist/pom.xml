@@ -44,7 +44,7 @@
               <goal>single</goal>
             </goals>
             <configuration>
-              <finalName>apache-flume-${project.version}</finalName>
+              <finalName>flume-${project.version}</finalName>
               <descriptors>
                 <descriptor>src/main/assembly/bin.xml</descriptor>
                 <descriptor>src/main/assembly/src.xml</descriptor>

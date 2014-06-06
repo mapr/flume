@@ -25,7 +25,7 @@ limitations under the License.
   <parent>
     <artifactId>flume-parent</artifactId>
     <groupId>org.apache.flume</groupId>
-    <version>1.5.0</version>
+    <version>1.5.0-mapr</version>
   </parent>
 
   <groupId>org.apache.flume</groupId>
@@ -72,33 +72,6 @@ limitations under the License.
 
   </dependencies>
   <profiles>
-
-    <profile>
-      <id>hadoop-1.0</id>
-      <activation>
-        <property>
-          <name>!hadoop.profile</name>
-        </property>
-      </activation>
-      <dependencies>
-
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-test</artifactId>
-          <scope>test</scope>
-        </dependency>
-
-        <!-- required because the hadoop-core pom is missing these deps
-            and MiniDFSCluster pulls in the webhdfs classes -->
-        <dependency>
-          <groupId>com.sun.jersey</groupId>
-          <artifactId>jersey-core</artifactId>
-          <scope>test</scope>
-        </dependency>
-
-      </dependencies>
-    </profile>
-
     <profile>
       <id>hadoop-2</id>
       <activation>
@@ -107,6 +80,10 @@ limitations under the License.
           <value>2</value>
         </property>
       </activation>
+      <properties>
+        <hadoop.version>2.4.0</hadoop.version>
+        <hadoop.common.artifact.id>hadoop-common</hadoop.common.artifact.id>
+      </properties>
       <dependencies>
 
         <dependency>
@@ -129,7 +106,6 @@ limitations under the License.
 
       </dependencies>
     </profile>
-
   </profiles>
 
 </project>

@@ -181,11 +181,11 @@ public abstract class AbstractHDFSWriter implements HDFSWriter {
             new Class<?>[] {});
         m.setAccessible(true);
       } catch (NoSuchMethodException e) {
-        logger.info("FileSystem's output stream doesn't support"
+        logger.debug("FileSystem's output stream doesn't support"
             + " getNumCurrentReplicas; --HDFS-826 not available; fsOut="
             + wrappedStreamClass.getName() + "; err=" + e);
       } catch (SecurityException e) {
-        logger.info("Doesn't have access to getNumCurrentReplicas on "
+        logger.debug("Doesn't have access to getNumCurrentReplicas on "
             + "FileSystems's output stream --HDFS-826 not available; fsOut="
             + wrappedStreamClass.getName(), e);
         m = null; // could happen on setAccessible()

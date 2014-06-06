@@ -19,15 +19,15 @@ limitations under the License.
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <parent>
-    <groupId>org.apache</groupId>
-    <artifactId>apache</artifactId>
-    <version>9</version>
+    <groupId>com.mapr</groupId>
+    <artifactId>mapr-root</artifactId>
+    <version>1.0</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.flume</groupId>
   <artifactId>flume-parent</artifactId>
-  <version>1.5.0</version>
+  <version>1.5.0-mapr</version>
   <packaging>pom</packaging>
 
   <name>Apache Flume</name>
@@ -72,7 +72,7 @@ limitations under the License.
 
   <profiles>
 
-    <profile>
+   <profile>
       <id>hadoop-1.0</id>
       <activation>
         <property>
@@ -91,6 +91,7 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>${hadoop.common.artifact.id}</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -110,7 +111,7 @@ limitations under the License.
         </property>
       </activation>
       <properties>
-        <hadoop.version>${hadoop2.version}</hadoop.version>
+        <hadoop.version>2.4.0</hadoop.version>
         <hbase.version>0.94.2</hbase.version>
         <hadoop.common.artifact.id>hadoop-common</hadoop.common.artifact.id>
         <thrift.version>0.8.0</thrift.version>
@@ -121,11 +122,13 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>${hadoop.common.artifact.id}</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -136,16 +139,19 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-client</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-annotations</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
 
           <!-- only compatible with hadoop-2 -->
@@ -459,6 +465,18 @@ limitations under the License.
   </pluginRepositories>
 
   <repositories>
+
+    <repository>
+      <id>repository.mapr.com</id>
+      <url>http://repository.mapr.com/maven/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+
     <repository>
       <id>repo1.maven.org</id>
       <url>http://repo1.maven.org/maven2</url>
@@ -483,9 +501,9 @@ limitations under the License.
 
   <distributionManagement>
     <repository>
-      <id>apache.staging.https</id>
-      <name>Apache Staging Repository</name>
-      <url>https://repository.apache.org/service/local/staging/deploy/maven2/</url>
+      <id>mapr.staging</id>
+      <name>Mapr Staging Repository</name>
+      <url>${mapr-maven}</url>
     </repository>
     <site>
       <id>apache.website</id>
@@ -1145,6 +1163,7 @@ limitations under the License.
         </reportSets>
       </plugin>
 
+<!-- for now
       <plugin>
         <groupId>org.tomdz.maven</groupId>
         <artifactId>sphinx-maven-plugin</artifactId>
@@ -1154,6 +1173,7 @@ limitations under the License.
           <sourceDirectory>${project.basedir}/flume-ng-doc/sphinx</sourceDirectory>
         </configuration>
       </plugin>
+-->
 
     </plugins>
   </reporting>

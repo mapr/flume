@@ -89,7 +89,7 @@ public class HDFSSequenceFile extends AbstractHDFSWriter {
             "is not of type LocalFileSystem: " + hdfs.getClass().getName());
       }
     }
-    if (conf.getBoolean("hdfs.append.support", false) == true && hdfs.isFile
+    if (conf.getBoolean("hdfs.append.support", true) == true && hdfs.isFile
             (dstPath)) {
       outStream = hdfs.append(dstPath);
     } else {

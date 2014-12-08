@@ -50,7 +50,7 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
         echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: removing yarn jars"
         find $FLUME_LIB/ \
             -iname "flume*-hbase.94-h1.jar" \
-            -exec bash -c 'mv "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h1.jar").jar' \;
+            -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h1.jar").jar' \;
 
     #
     # yarn
@@ -61,21 +61,21 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
                 echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing flume*-hbase.94-h2 jars"
                 find $FLUME_LIB/ \
                     -iname "flume*-hbase.94-h2.jar" \
-                    -exec bash -c 'mv "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h2.jar").jar' \;
+                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h2.jar").jar' \;
                 ;;
 
             "0.98.4")
                 echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing flume*-hbase.98-h2 jars"
                 find $FLUME_LIB/ \
                     -iname "flume*-hbase.98-h2.jar" \
-                    -exec bash -c 'mv "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar").jar' \;
+                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar").jar' \;
                 ;;
 
             *)
                 echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing default flume*-hbase.98-h2 jars"
                 find $FLUME_LIB/ \
                     -iname "flume*-hbase.98-h2.jar" \
-                    -exec bash -c 'mv "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar").jar' \;
+                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar").jar' \;
                 ;;
         esac
     fi

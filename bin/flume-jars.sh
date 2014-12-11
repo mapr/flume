@@ -49,8 +49,8 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
     if [ "$POST_YARN" = "0" ]; then
         echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: removing yarn jars"
         find $FLUME_LIB/ \
-            -iname "flume*-hbase.94-h1.jar" \
-            -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h1.jar").jar' \;
+            -iname "flume*-hbase.94-h1.jar.tmp" \
+            -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h1.jar.tmp").jar' \;
 
     #
     # yarn
@@ -60,22 +60,22 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
             "0.94.21"|"0.94.17")
                 echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing flume*-hbase.94-h2 jars"
                 find $FLUME_LIB/ \
-                    -iname "flume*-hbase.94-h2.jar" \
-                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h2.jar").jar' \;
+                    -iname "flume*-hbase.94-h2.jar.tmp" \
+                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h2.jar.tmp").jar' \;
                 ;;
 
             "0.98.4")
                 echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing flume*-hbase.98-h2 jars"
                 find $FLUME_LIB/ \
-                    -iname "flume*-hbase.98-h2.jar" \
-                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar").jar' \;
+                    -iname "flume*-hbase.98-h2.jar.tmp" \
+                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar.tmp").jar' \;
                 ;;
 
             *)
                 echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing default flume*-hbase.98-h2 jars"
                 find $FLUME_LIB/ \
-                    -iname "flume*-hbase.98-h2.jar" \
-                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar").jar' \;
+                    -iname "flume*-hbase.98-h2.jar.tmp" \
+                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar.tmp").jar' \;
                 ;;
         esac
     fi

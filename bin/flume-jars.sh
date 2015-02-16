@@ -46,7 +46,7 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
     #
     # not yarn
     #
-    if [ "$POST_YARN" = "0" ]; then
+    if [ "$POST_YARN" == "0" ]; then
         echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: removing yarn jars"
         find $FLUME_LIB/ \
             -iname "flume*-hbase.94-h1.jar.tmp" \
@@ -56,27 +56,38 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
     # yarn
     #
     else
-        case $HBASE_VERSION in
-            "0.94.21"|"0.94.17")
+        if [ "$HBASE_VERSION" = "none" ]; then
+            #
+            # No hbase installed. Use 0.98 jars by default
+            #
+            echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing default flume*-hbase.98-h2 jars"
+            find $FLUME_LIB/ \
+                -iname "flume*-hbase.98-h2.jar.tmp" \
+                -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar.tmp").jar' \;
+        else
+            #
+            # If hbase version less or equal 0.94X returns boolean 1, else returns boolean 0
+            #
+            HBASE_VERSION_AS_FLOAT=`echo $HBASE_VERSION | awk -F "." '{print $1"."$2}'`
+            IS_HBASE_VER_LESS_OR_EQUAL_094=`echo | awk -v cur=$HBASE_VERSION_AS_FLOAT -v min=0.94 '{if (cur <= min) printf("1"); else printf ("0");}'`
+    
+            if [ $IS_HBASE_VER_LESS_OR_EQUAL_094 ]; then
+                #
+                # hbase version is less or equal 0.94X
+                #
                 echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing flume*-hbase.94-h2 jars"
                 find $FLUME_LIB/ \
                     -iname "flume*-hbase.94-h2.jar.tmp" \
                     -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.94-h2.jar.tmp").jar' \;
-                ;;
-
-            "0.98.4")
+            else
+                #
+                # hbase version is greater 0.94X
+                #
                 echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing flume*-hbase.98-h2 jars"
                 find $FLUME_LIB/ \
                     -iname "flume*-hbase.98-h2.jar.tmp" \
                     -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar.tmp").jar' \;
-                ;;
-
-            *)
-                echo "POST_YARN=$POST_YARN, HBASE_VERSION=$HBASE_VERSION: installing default flume*-hbase.98-h2 jars"
-                find $FLUME_LIB/ \
-                    -iname "flume*-hbase.98-h2.jar.tmp" \
-                    -exec bash -c 'cp "{}" $(dirname "{}")/$(basename "{}" "-hbase.98-h2.jar.tmp").jar' \;
-                ;;
-        esac
+            fi
+        fi
     fi
 fi

@@ -32,7 +32,7 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
     # if hbase has been installed, set it version
     #
     if [ -f "/opt/mapr/hbase/hbaseversion" ]; then
-        HBASE_VERSION=`cat /opt/mapr/hbase/hbaseversion`
+        HBASE_VERSION=$(cat /opt/mapr/hbase/hbaseversion)
     else
         HBASE_VERSION="none"
     fi
@@ -40,8 +40,8 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
     #
     # if mapr-core release >=4.0 (yarn beta) returns boolean 1, else returns boolean 0
     #
-    MAPR_VERSION=`cat /opt/mapr/MapRBuildVersion | awk -F "." '{print $1"."$2}'`
-    POST_YARN=`echo | awk -v cur=$MAPR_VERSION -v min=4.0 '{if (cur >= min) printf("1"); else printf ("0");}'`
+    MAPR_VERSION=$(cat /opt/mapr/MapRBuildVersion | awk -F "." '{print $1"."$2}')
+    POST_YARN=$(echo | awk -v cur="$MAPR_VERSION" -v min=4.0 '{if (cur >= min) printf("1"); else printf ("0");}')
 
     #
     # not yarn
@@ -68,10 +68,10 @@ if [ -f /opt/mapr/MapRBuildVersion ]; then
             #
             # If hbase version less or equal 0.94X returns boolean 1, else returns boolean 0
             #
-            HBASE_VERSION_AS_FLOAT=`echo $HBASE_VERSION | awk -F "." '{print $1"."$2}'`
-            IS_HBASE_VER_LESS_OR_EQUAL_094=`echo | awk -v cur=$HBASE_VERSION_AS_FLOAT -v min=0.94 '{if (cur <= min) printf("1"); else printf ("0");}'`
+            HBASE_VERSION_AS_FLOAT=$(echo $HBASE_VERSION | awk -F "." '{print $1"."$2}')
+            IS_HBASE_VER_LESS_OR_EQUAL_094=$(echo | awk -v cur="$HBASE_VERSION_AS_FLOAT" -v min=0.94 '{if (cur <= min) printf("1"); else printf ("0");}')
     
-            if [ $IS_HBASE_VER_LESS_OR_EQUAL_094 ]; then
+            if [ "$IS_HBASE_VER_LESS_OR_EQUAL_094" = "1" ]; then
                 #
                 # hbase version is less or equal 0.94X
                 #

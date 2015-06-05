@@ -19,15 +19,15 @@ limitations under the License.
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <parent>
-    <groupId>org.apache</groupId>
-    <artifactId>apache</artifactId>
-    <version>9</version>
+    <groupId>com.mapr</groupId>
+    <artifactId>mapr-root</artifactId>
+    <version>1.0</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.flume</groupId>
   <artifactId>flume-parent</artifactId>
-  <version>1.6.0</version>
+  <version>1.6.0-mapr</version>
   <packaging>pom</packaging>
 
   <name>Apache Flume</name>
@@ -95,6 +95,7 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>${hadoop.common.artifact.id}</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -133,7 +134,7 @@ limitations under the License.
         </property>
       </activation>
       <properties>
-        <hadoop.version>${hadoop2.version}</hadoop.version>
+        <hadoop.version>2.4.0</hadoop.version>
         <hbase.version>0.94.2</hbase.version>
         <hadoop.common.artifact.id>hadoop-common</hadoop.common.artifact.id>
         <thrift.version>0.9.0</thrift.version>
@@ -144,11 +145,13 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>${hadoop.common.artifact.id}</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -164,16 +167,19 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-client</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-annotations</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
 
           <dependency>
@@ -201,7 +207,7 @@ limitations under the License.
           <dependency>
             <groupId>org.apache.flume.flume-ng-sinks</groupId>
             <artifactId>flume-dataset-sink</artifactId>
-            <version>1.6.0</version>
+            <version>1.6.0-mapr</version>
           </dependency>
         </dependencies>
       </dependencyManagement>
@@ -649,6 +655,17 @@ limitations under the License.
 
   <repositories>
     <repository>
+      <id>repository.mapr.com</id>
+      <url>http://repository.mapr.com/maven/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+
+    <repository>
       <id>repo1.maven.org</id>
       <url>http://repo1.maven.org/maven2</url>
       <releases>
@@ -672,9 +689,9 @@ limitations under the License.
 
   <distributionManagement>
     <repository>
-      <id>apache.staging.https</id>
-      <name>Apache Staging Repository</name>
-      <url>https://repository.apache.org/service/local/staging/deploy/maven2/</url>
+      <id>mapr.staging</id>
+      <name>Mapr Staging Repository</name>
+      <url>${mapr-maven}</url>
     </repository>
     <site>
       <id>apache.website</id>
@@ -1097,144 +1114,144 @@ limitations under the License.
       <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-configuration</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
       <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-core</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-tools</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-node</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-channels</groupId>
         <artifactId>flume-file-channel</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-channels</groupId>
         <artifactId>flume-jdbc-channel</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-channels</groupId>
         <artifactId>flume-kafka-channel</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-channels</groupId>
         <artifactId>flume-spillable-memory-channel</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
      <dependency>
        <groupId>org.apache.flume.flume-ng-channels</groupId>
        <artifactId>flume-recoverable-memory-channel</artifactId>
-       <version>1.6.0</version>
+       <version>1.6.0-mapr</version>
      </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sinks</groupId>
         <artifactId>flume-hdfs-sink</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sinks</groupId>
         <artifactId>flume-hive-sink</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sinks</groupId>
         <artifactId>flume-irc-sink</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sinks</groupId>
         <artifactId>flume-ng-hbase-sink</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sinks</groupId>
         <artifactId>flume-ng-elasticsearch-sink</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sinks</groupId>
         <artifactId>flume-ng-morphline-solr-sink</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sinks</groupId>
         <artifactId>flume-ng-kafka-sink</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sources</groupId>
         <artifactId>flume-scribe-source</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sources</groupId>
         <artifactId>flume-jms-source</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sources</groupId>
         <artifactId>flume-twitter-source</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-legacy-sources</groupId>
         <artifactId>flume-thrift-source</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-sources</groupId>
         <artifactId>flume-kafka-source</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-legacy-sources</groupId>
         <artifactId>flume-avro-source</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-sdk</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-sdk</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
         <classifier>tests</classifier>
         <scope>test</scope>
       </dependency>
@@ -1242,26 +1259,26 @@ limitations under the License.
       <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-auth</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-clients</groupId>
         <artifactId>flume-ng-log4jappender</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-clients</groupId>
         <artifactId>flume-ng-log4jappender</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
         <classifier>jar-with-dependencies</classifier>
       </dependency>
 
       <dependency>
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-ng-embedded-agent</artifactId>
-        <version>1.6.0</version>
+        <version>1.6.0-mapr</version>
       </dependency>
 
       <dependency>
@@ -1450,17 +1467,17 @@ limitations under the License.
           </reportSet>
         </reportSets>
       </plugin>
-
-      <plugin>
-        <groupId>org.tomdz.maven</groupId>
-        <artifactId>sphinx-maven-plugin</artifactId>
-        <version>1.0.2</version>
-        <inherited>false</inherited>
-        <configuration>
-          <sourceDirectory>${project.basedir}/flume-ng-doc/sphinx</sourceDirectory>
-        </configuration>
-      </plugin>
-
+<!-- for now
+            <plugin>
+              <groupId>org.tomdz.maven</groupId>
+              <artifactId>sphinx-maven-plugin</artifactId>
+              <version>1.0.2</version>
+              <inherited>false</inherited>
+              <configuration>
+                <sourceDirectory>${project.basedir}/flume-ng-doc/sphinx</sourceDirectory>
+              </configuration>
+            </plugin>
+-->
     </plugins>
   </reporting>
 

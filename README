@@ -48,3 +48,12 @@ To compile Flume, run `mvn compile`.
 To build a distribution, run `mvn install`.
 
 The final Flume distribution artifacts will be in $project/flume-ng-dist/target/.
+
+Using Flume artifacts in your Maven Project
+
+Add the following dependency to your project's pom.xml
+<dependency>
+  <groupId>com.mapr.flume</groupId>
+  <artifactId>flume</artifactId>
+  <version>${mapr.flume.version}</version>
+</dependency>

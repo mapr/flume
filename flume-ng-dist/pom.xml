@@ -24,7 +24,7 @@
   <parent>
     <artifactId>flume-parent</artifactId>
     <groupId>org.apache.flume</groupId>
-    <version>1.6.0</version>
+    <version>1.6.0-mapr</version>
   </parent>
 
   <artifactId>flume-ng-dist</artifactId>
@@ -44,7 +44,7 @@
               <goal>single</goal>
             </goals>
             <configuration>
-              <finalName>apache-flume-${project.version}</finalName>
+              <finalName>flume-${project.version}</finalName>
               <descriptors>
                 <descriptor>src/main/assembly/bin.xml</descriptor>
                 <descriptor>src/main/assembly/src.xml</descriptor>

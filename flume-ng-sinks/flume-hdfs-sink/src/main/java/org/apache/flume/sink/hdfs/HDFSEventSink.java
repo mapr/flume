@@ -426,6 +426,15 @@ public class HDFSEventSink extends AbstractSink implements Configurable {
             sfWriters.put(lookupPath, bucketWriter);
           }
           bucketWriter.append(event);
+           } catch (IOException e) {
+             sfWriters.remove(lookupPath);
+             writers.remove(bucketWriter);
+             LOG.warn("Unable to append to " + lookupPath + ". Path might have been deleted or file ownership/permissions changed. Removing file handles from sfWriters and writers so append can be retried in another transaction event with new file handle.", e);
+             try {
+               bucketWriter.close();
+             } catch (IOException ex){
+               LOG.warn("Caught IOException while closing bucketWriter. ", ex);
+             }
         }
       }
 

@@ -417,7 +417,7 @@ public class StagedInstall {
           @Override
           public boolean accept(File pathname) {
             String name = pathname.getName();
-            if (name != null && name.startsWith("apache-flume-")
+            if (name != null && name.startsWith("flume-")
                 && name.endsWith("-bin.tar.gz")) {
               return true;
             }

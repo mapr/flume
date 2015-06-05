@@ -79,7 +79,7 @@ public class TestHDFSEventSinkOnMiniCluster {
 
   private static String getNameNodeURL(MiniDFSCluster cluster) {
     int nnPort = cluster.getNameNode().getNameNodeAddress().getPort();
-    return "hdfs://localhost:" + nnPort;
+    return "maprfs:///";
   }
 
   /**

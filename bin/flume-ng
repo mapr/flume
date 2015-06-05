@@ -58,6 +58,20 @@ error() {
   fi
 }
 
+function find_home() {
+target="$1"
+
+# file exists and is a symbolic link
+while [ -h "$target" ]; do
+target=`readlink "$target"`
+done
+
+# find home
+home_dir=`dirname "$target"` # points to bin dir
+home_dir="$home_dir/../"
+echo "$home_dir"
+}
+
 # If avail, add Hadoop paths to the FLUME_CLASSPATH and to the
 # FLUME_JAVA_LIBRARY_PATH env vars.
 # Requires Flume jars to already be on FLUME_CLASSPATH.
@@ -66,7 +80,7 @@ add_hadoop_paths() {
       which hadoop 2>/dev/null)
 
   if [ -f "${HADOOP_IN_PATH}" ]; then
-    info "Including Hadoop libraries found via ($HADOOP_IN_PATH) for HDFS access"
+    info "Including Hadoop libraries found via ($HADOOP_IN_PATH) for MapR-FS access"
 
     # determine hadoop java.library.path and use that for flume
     local HADOOP_CLASSPATH=""
@@ -145,6 +159,16 @@ add_hive_paths(){
   fi
 }
 
+add_streams_paths(){
+  local MAPR_LIB_DIR="${BASEMAPR}/lib"
+  local MAPR_STREAMS=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )
+  local STREAMS_CLIENTS=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null)
+  if [ ! -z "$MAPR_STREAMS" ] && [ ! -z "$STREAMS_CLIENTS" ]; then
+    info "Including MapR Streams libraries found in ($MAPR_LIB_DIR) for Streams access"
+    FLUME_CLASSPATH="${MAPR_STREAMS}:${STREAMS_CLIENTS}:${FLUME_CLASSPATH}"
+  fi
+}
+
 set_LD_LIBRARY_PATH(){
 #Append the FLUME_JAVA_LIBRARY_PATH to whatever the user may have specified in
 #flume-env.sh
@@ -211,7 +235,7 @@ run_flume() {
   if [ ${CLEAN_FLAG} -ne 0 ]; then
     set -x
   fi
-  $EXEC $JAVA_HOME/bin/java $JAVA_OPTS $FLUME_JAVA_OPTS "${arr_java_props[@]}" -cp "$FLUME_CLASSPATH" \
+  $EXEC $JAVA_HOME/bin/java $JAVA_OPTS $FLUME_JAVA_OPTS $FLUME_SECURITY_OPTS "${arr_java_props[@]}" -cp "$FLUME_CLASSPATH" \
       -Djava.library.path=$FLUME_JAVA_LIBRARY_PATH "$FLUME_APPLICATION_CLASS" $*
 }
 
@@ -327,6 +351,9 @@ elif [ -f "$opt_conf/flume-env.sh" ]; then
   source "$opt_conf/flume-env.sh"
 fi
 
+# append hadoop.login options
+  opt_java_props="${opt_java_props} ${FLUME_LOGIN_OPTS}"
+
 # prepend command-line classpath to env script classpath
 if [ -n "${opt_classpath}" ]; then
   if [ -n "${FLUME_CLASSPATH}" ]; then
@@ -346,6 +373,38 @@ if [ -n "${FLUME_CLASSPATH}" ] ; then
 else
   FLUME_CLASSPATH="${FLUME_HOME}/lib/*"
 fi
+
+# Find hadoop home
+BASEMAPR=${MAPR_HOME:-/opt/mapr}
+
+if [ -f /opt/mapr/conf/hadoop_version ]; then
+    hadoop_mode=$(cat /opt/mapr/conf/hadoop_version | grep default_mode | cut -d '=' -f 2)
+    if [ "$hadoop_mode" = "yarn" ]; then
+	    version=$(cat /opt/mapr/conf/hadoop_version | grep yarn_version | cut -d '=' -f 2)
+	    HADOOP_VERSION="hadoop-$version"
+    elif [ "$hadoop_mode" = "classic" ]; then
+	    version=$(cat /opt/mapr/conf/hadoop_version | grep classic_version | cut -d '=' -f 2)
+	    HADOOP_VERSION="hadoop-$version"
+    else
+	echo 'Unknown hadoop version'
+    fi
+else
+    HADOOP_VERSION=$(hadoop version | grep Hadoop | awk -F " " '{print $2}')
+fi
+
+if [ $HADOOP_VERSION == 1.0.3 ]; then
+ export HADOOP_HOME=${BASEMAPR}/hadoop/hadoop-0.20.2/
+else
+ export HADOOP_HOME=${BASEMAPR}/hadoop/${HADOOP_VERSION}/
+fi
+
+env=$BASEMAPR/conf/env.sh
+[ -f $env ] && . $env
+
+for file in `find ${HADOOP_HOME}/lib/ | egrep -v "slf4j-(api|log4j12).*\.jar"`; do
+  FLUME_CLASSPATH="${FLUME_CLASSPATH}:$file"
+done
+FLUME_CLASSPATH="${FLUME_CLASSPATH}:${BASEMAPR}/lib/maprfs-*"
 
 # load plugins.d directories
 PLUGINS_DIRS=""
@@ -394,6 +453,41 @@ fi
 
 # find java
 if [ -z "${JAVA_HOME}" ] ; then
+  for candidate in \
+    /usr/lib/jvm/java-7-sun \
+    /usr/lib/jvm/java-1.7.0-sun-1.7.0.* \
+    /usr/lib/j2sdk1.7-sun \
+    /usr/java/jdk1.7* \
+    /usr/java/jre1.7* \
+    /Library/Java/Home \
+    /usr/java/default \
+    /usr \
+    /usr/lib/jvm/default-java ; do
+    if [ -e $candidate/bin/java ]; then
+      export JAVA_HOME=$candidate
+      break
+    fi
+  done
+fi
+
+
+# Find hive home
+if [ "$HIVE_HOME" == "" ]; then
+   if [ -f "/usr/bin/hive" ]; then
+     HIVE_HOME=$(find_home "/usr/bin/hive")
+  fi
+fi
+
+# Find hcat home
+if [ "$HCAT_HOME" == "" ]; then
+  if [ -f "/usr/bin/hcat" ]; then
+    HCAT_HOME=$(find_home "/usr/bin/hcat")
+  elif [ -f "/usr/bin/hive-hcatllalog" ]; then
+    HCAT_HOME=$(find_home "/usr/bin/hive-hcatalog")
+  fi
+fi
+
+if [ -z "${JAVA_HOME}" ] ; then
   warn "JAVA_HOME is not set!"
   # Try to use Bigtop to autodetect JAVA_HOME if it's available
   if [ -e /usr/libexec/bigtop-detect-javahome ] ; then
@@ -410,10 +504,18 @@ if [ -z "${JAVA_HOME}" ] ; then
   fi
 fi
 
+if [ "$MAPR_SECURITY_STATUS" = "true" ]; then
+  FLUME_SECURITY_OPTS="$FLUME_SECURITY_OPTS $MAPR_AUTH_CLIENT_OPTS"
+  JAVA_OPTS="$JAVA_OPTS -Dmapr_sec_enabled=true"
+else
+  FLUME_SECURITY_OPTS="$FLUME_SECURITY_OPTS $SIMPLE_LOGIN_OPTS"
+fi
+
 # look for hadoop libs
 add_hadoop_paths
 add_HBASE_paths
 add_hive_paths
+add_streams_paths
 
 # prepend conf dir to classpath
 if [ -n "$opt_conf" ]; then

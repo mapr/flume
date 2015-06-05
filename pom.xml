@@ -19,15 +19,15 @@ limitations under the License.
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <parent>
-    <groupId>org.apache</groupId>
-    <artifactId>apache</artifactId>
-    <version>18</version>
+    <groupId>com.mapr</groupId>
+    <artifactId>mapr-root</artifactId>
+    <version>1.0</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.flume</groupId>
   <artifactId>flume-parent</artifactId>
-  <version>1.8.0</version>
+  <version>1.8.0-mapr</version>
   <packaging>pom</packaging>
 
   <name>Apache Flume</name>
@@ -69,7 +69,7 @@ limitations under the License.
     <gson.version>2.2.2</gson.version>
     <guava.version>18.0</guava.version>
     <guava-old.version>11.0.2</guava-old.version>
-    <hadoop2.version>2.4.0</hadoop2.version>
+    <hadoop2.version>2.7.0-mapr-1607</hadoop2.version>
     <httpclient.version>4.3.5</httpclient.version>
     <httpclient-old.version>4.2.1</httpclient-old.version>
     <irclib.version>1.10</irclib.version>
@@ -156,6 +156,7 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>${hadoop.common.artifact.id}</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -204,11 +205,13 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>${hadoop.common.artifact.id}</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
             <exclusions>
               <exclusion>
                 <groupId>tomcat</groupId>
@@ -244,16 +247,19 @@ limitations under the License.
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-client</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-annotations</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
             <version>${hadoop.version}</version>
+            <scope>provided</scope>
           </dependency>
 
           <dependency>
@@ -296,8 +302,9 @@ limitations under the License.
       </activation>
       <properties>
         <hadoop.version>${hadoop2.version}</hadoop.version>
-        <hbase.version>1.0.0</hbase.version>
+        <hbase.version>1.1.1-mapr-1602</hbase.version>
         <hadoop.common.artifact.id>hadoop-common</hadoop.common.artifact.id>
+        <thrift.version>0.9.0</thrift.version>
       </properties>
       <dependencyManagement>
         <dependencies>
@@ -737,11 +744,71 @@ limitations under the License.
     <url>http://www.apache.org</url>
   </organization>
 
+  <pluginRepositories>
+
+    <pluginRepository>
+      <id>repo1.maven.org</id>
+      <url>http://repo1.maven.org/maven2</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </pluginRepository>
+
+    <pluginRepository>
+      <id>oss.sonatype.org</id>
+      <url>https://oss.sonatype.org/content/groups/public</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </pluginRepository>
+
+  </pluginRepositories>
+
+  <repositories>
+    <repository>
+      <id>repository.mapr.com</id>
+      <url>http://repository.mapr.com/maven/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+
+    <repository>
+      <id>repo1.maven.org</id>
+      <url>http://repo1.maven.org/maven2</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+
+    <repository>
+      <id>repository.jboss.org</id>
+      <url>http://repository.jboss.org/nexus/content/groups/public/
+      </url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+
+  </repositories>
+
   <distributionManagement>
     <repository>
-      <id>apache.staging.https</id>
-      <name>Apache Staging Repository</name>
-      <url>https://repository.apache.org/service/local/staging/deploy/maven2/</url>
+      <id>mapr.staging</id>
+      <name>Mapr Staging Repository</name>
+      <url>${mapr-maven}</url>
     </repository>
     <site>
       <id>apache.website</id>
@@ -1623,32 +1690,34 @@ limitations under the License.
           </reportSet>
         </reportSets>
       </plugin>
-
-      <plugin>
-        <groupId>org.tomdz.maven</groupId>
-        <artifactId>sphinx-maven-plugin</artifactId>
-        <version>${mvn-sphinx-plugin}</version>
-        <inherited>false</inherited>
-        <configuration>
-          <sourceDirectory>${project.basedir}/flume-ng-doc/sphinx</sourceDirectory>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>${checkstyle.plugin.version}</version>
-        <configuration>
-          <configLocation>flume/checkstyle.xml</configLocation>
-          <suppressionsLocation>flume/checkstyle-suppressions.xml</suppressionsLocation>
-          <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
-          <encoding>UTF-8</encoding>
-          <includeTestSourceDirectory>true</includeTestSourceDirectory>
-          <linkXRef>false</linkXRef>
-        </configuration>
-      </plugin>
-
-    </plugins>
-  </reporting>
-
-</project>
+<!-- for now
+              <plugin>
+                <groupId>org.tomdz.maven</groupId>
+                <artifactId>sphinx-maven-plugin</artifactId>
+                <version>${mvn-sphinx-plugin}</version>
+                <inherited>false</inherited>
+                <configuration>
+                  <sourceDirectory>${project.basedir}/flume-ng-doc/sphinx</sourceDirectory>
+                </configuration>
+              </plugin>
+        
+              <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle.plugin.version}</version>
+                <configuration>
+                  <configLocation>flume/checkstyle.xml</configLocation>
+                  <suppressionsLocation>flume/checkstyle-suppressions.xml</suppressionsLocation>
+                  <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
+                  <encoding>UTF-8</encoding>
+                  <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                  <linkXRef>false</linkXRef>
+                </configuration>
+              </plugin>
+-->
+        
+            </plugins>
+          </reporting>
+        
+        </project>
+        

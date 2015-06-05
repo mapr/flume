@@ -25,7 +25,7 @@ limitations under the License.
   <parent>
     <artifactId>flume-parent</artifactId>
     <groupId>org.apache.flume</groupId>
-    <version>1.8.0</version>
+    <version>1.8.0-mapr</version>
   </parent>
 
   <groupId>org.apache.flume</groupId>
@@ -108,6 +108,10 @@ limitations under the License.
           <value>2</value>
         </property>
       </activation>
+      <properties>
+        <hadoop.version>2.4.0</hadoop.version>
+        <hadoop.common.artifact.id>hadoop-common</hadoop.common.artifact.id>
+      </properties>
       <dependencies>
 
         <dependency>

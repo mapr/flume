@@ -199,10 +199,12 @@ class BucketWriter {
       return fileSystem.getClass().getMethod("isFileClosed",
         Path.class);
     } catch (Exception e) {
-      LOG.info("isFileClosed() is not available in the version of the " +
-               "distributed filesystem being used. " +
-               "Flume will not attempt to re-close files if the close fails " +
-               "on the first attempt");
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("isFileClosed is not available in the " +
+          "version of HDFS being used. Flume will not " +
+          "attempt to close files if the close fails on " +
+          "the first attempt", e);
+          }
       return null;
     }
   }

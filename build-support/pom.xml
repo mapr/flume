@@ -22,7 +22,7 @@ limitations under the License.
 
     <groupId>org.apache.flume</groupId>
     <artifactId>build-support</artifactId>
-    <version>1.9.0</version>
+    <version>1.9.0-mapr</version>
     <name>Build Support</name>
     <description>Build tools and Configuration</description>
     <properties>

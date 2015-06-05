@@ -65,3 +65,12 @@ We recommend you set the following Maven options:
 
 To compile Flume and build a distribution tarball, run `mvn install` from the
 top level directory. The artifacts will be placed under `flume-ng-dist/target/`.
+
+Using Flume artifacts in your Maven Project
+
+Add the following dependency to your project's pom.xml
+<dependency>
+  <groupId>com.mapr.flume</groupId>
+  <artifactId>flume</artifactId>
+  <version>${mapr.flume.version}</version>
+</dependency>

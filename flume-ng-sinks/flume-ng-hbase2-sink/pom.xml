@@ -15,7 +15,7 @@
   <parent>
     <artifactId>flume-ng-sinks</artifactId>
     <groupId>org.apache.flume</groupId>
-    <version>1.9.0</version>
+    <version>1.9.0-mapr</version>
   </parent>
   <groupId>org.apache.flume.flume-ng-sinks</groupId>
   <artifactId>flume-ng-hbase2-sink</artifactId>
@@ -94,6 +94,12 @@
         <artifactId>jetty-server</artifactId>
         <version>${hbase2.jetty.version}</version>
         <scope>test</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>org.glassfish</groupId>
+        <artifactId>javax.el</artifactId>
+        <version>3.0.1-b11</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

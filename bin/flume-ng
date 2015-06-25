@@ -252,7 +252,7 @@ run_flume() {
   if [ ${CLEAN_FLAG} -ne 0 ]; then
     set -x
   fi
-  $EXEC $JAVA_HOME/bin/java $JAVA_OPTS $FLUME_JAVA_OPTS "${arr_java_props[@]}" -cp "$FLUME_CLASSPATH" \
+  $EXEC $JAVA_HOME/bin/java $JAVA_OPTS $FLUME_JAVA_OPTS "${arr_java_props[@]}"  "$JAVA_SECURITY_AUTH_LOGIN_CONFIG" -cp "$FLUME_CLASSPATH" \
       -Djava.library.path=$FLUME_JAVA_LIBRARY_PATH "$FLUME_APPLICATION_CLASS" $*
 }
 
@@ -526,6 +526,9 @@ if [ -n "${opt_dryrun}" ]; then
   warn "Dryrun mode enabled (will not actually initiate startup)"
   EXEC="echo"
 fi
+
+# Set java security auth login config
+JAVA_SECURITY_AUTH_LOGIN_CONFIG="-Djava.security.auth.login.config=$BASEMAPR/conf/mapr.login.conf"
 
 # finally, invoke the appropriate command
 if [ -n "$opt_agent" ] ; then

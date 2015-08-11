@@ -252,7 +252,7 @@ run_flume() {
   if [ ${CLEAN_FLAG} -ne 0 ]; then
     set -x
   fi
-  $EXEC $JAVA_HOME/bin/java $JAVA_OPTS $FLUME_JAVA_OPTS $MAPR_AUTH_CLIENT_OPTS "${arr_java_props[@]}" -cp "$FLUME_CLASSPATH" \
+  $EXEC $JAVA_HOME/bin/java $JAVA_OPTS $FLUME_JAVA_OPTS $FLUME_SECURITY_OPTS "${arr_java_props[@]}" -cp "$FLUME_CLASSPATH" \
       -Djava.library.path=$FLUME_JAVA_LIBRARY_PATH "$FLUME_APPLICATION_CLASS" $*
 }
 
@@ -507,6 +507,12 @@ if [ -z "${JAVA_HOME}" ] ; then
     [ -n "$JAVA_DEFAULT" ] || error "Unable to find java executable. Is it in your PATH?" 1
     JAVA_HOME=$(cd $(dirname $JAVA_DEFAULT)/..; pwd)
   fi
+fi
+
+if [ "$MAPR_SECURITY_STATUS" = "true" ]; then
+  FLUME_SECURITY_OPTS="$FLUME_SECURITY_OPTS $MAPR_AUTH_CLIENT_OPTS"
+else
+  FLUME_SECURITY_OPTS="$FLUME_SECURITY_OPTS $SIMPLE_LOGIN_OPTS"
 fi
 
 # look for hadoop libs

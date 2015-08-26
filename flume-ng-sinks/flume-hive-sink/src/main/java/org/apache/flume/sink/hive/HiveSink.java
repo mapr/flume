@@ -33,9 +33,13 @@ import org.apache.flume.formatter.output.BucketPath;
 import org.apache.flume.instrumentation.SinkCounter;
 import org.apache.flume.sink.AbstractSink;
 import org.apache.hive.hcatalog.streaming.HiveEndPoint;
+import org.apache.hadoop.security.SecurityUtil;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -54,6 +58,12 @@ public class HiveSink extends AbstractSink implements Configurable {
 
   private static final Logger LOG = LoggerFactory.getLogger(HiveSink.class);
 
+  private static class AuthenticationFailed extends Exception {
+    public AuthenticationFailed(String reason, Exception cause) {
+      super("Kerberos Authentication Failed. " + reason, cause);
+    }
+  }
+
   private static final int DEFAULT_MAXOPENCONNECTIONS = 500;
   private static final int DEFAULT_TXNSPERBATCH = 100;
   private static final int DEFAULT_BATCHSIZE = 15000;
@@ -66,6 +76,8 @@ public class HiveSink extends AbstractSink implements Configurable {
   private SinkCounter sinkCounter;
   private volatile int idleTimeout;
   private String metaStoreUri;
+  private String kerberosPrincipal;
+  private String kerberosKeytab;
   private String proxyUser;
   private String database;
   private String table;
@@ -75,7 +87,6 @@ public class HiveSink extends AbstractSink implements Configurable {
   private Integer maxOpenConnections;
   private boolean autoCreatePartitions;
   private String serializerType;
-  private HiveEventSerializer serializer;
 
   /**
    * Default timeout for blocking I/O calls in HiveWriter
@@ -103,6 +114,7 @@ public class HiveSink extends AbstractSink implements Configurable {
   @Override
   public void configure(Context context) {
 
+    // - METASTORE URI conf
     metaStoreUri = context.getString(Config.HIVE_METASTORE);
     if (metaStoreUri == null) {
       throw new IllegalArgumentException(Config.HIVE_METASTORE + " config setting is not " +
@@ -112,6 +124,39 @@ public class HiveSink extends AbstractSink implements Configurable {
       metaStoreUri = null;
     }
     proxyUser = null; // context.getString("hive.proxyUser"); not supported by hive api yet
+
+    // - Kerberos Authentication conf
+    String oldKerberosPrincipal = kerberosPrincipal;
+    kerberosPrincipal = context.getString("hive.kerberosPrincipal", null);
+    String oldKerberosKeytab = kerberosKeytab;
+    kerberosKeytab = context.getString("hive.kerberosKeytab", null);
+
+    if(kerberosKeytab==null && kerberosPrincipal==null) {
+      kerberosEnabled = false;
+    } else if ( kerberosPrincipal!=null && kerberosKeytab!=null ) {
+      kerberosEnabled = true;
+    } else {
+      throw new IllegalArgumentException("To enable Kerberos, need to set both " +
+              "hive.kerberosPrincipal & hive.kerberosKeytab. Cannot set just one of them. "
+              + getName());
+    }
+
+    boolean needReauth = hasCredentialChanged(oldKerberosKeytab, oldKerberosPrincipal
+            , kerberosKeytab, kerberosPrincipal);
+    if( needReauth ) {
+      if (kerberosEnabled) {
+        try {
+          ugi = authenticate(kerberosKeytab, kerberosPrincipal);
+        } catch (AuthenticationFailed ex) {
+          LOG.error(getName() + " : " + ex.getMessage(), ex);
+          throw new IllegalArgumentException(ex);
+        }
+      } else {
+        ugi = null;
+      }
+    }
+
+    // - Table/Partition conf
     database = context.getString(Config.HIVE_DATABASE);
     if (database == null) {
       throw new IllegalArgumentException(Config.HIVE_DATABASE + " config setting is not " +
@@ -128,7 +173,7 @@ public class HiveSink extends AbstractSink implements Configurable {
       partitionVals = Arrays.asList(partitions.split(","));
     }
 
-
+    // - Hive Txn size
     txnsPerBatchAsk = context.getInteger(Config.HIVE_TXNS_PER_BATCH_ASK, DEFAULT_TXNSPERBATCH);
     if (txnsPerBatchAsk < 0) {
       LOG.warn(getName() + ". hive.txnsPerBatchAsk must be  positive number. Defaulting to "
@@ -154,6 +199,7 @@ public class HiveSink extends AbstractSink implements Configurable {
       callTimeout = DEFAULT_CALLTIMEOUT;
     }
 
+    // - Other Sink parameters
     heartBeatInterval = context.getInteger(Config.HEART_BEAT_INTERVAL, DEFAULT_HEARTBEATINTERVAL);
     if (heartBeatInterval < 0) {
       LOG.warn(getName() + ". heartBeatInterval must be  positive number. Defaulting to "
@@ -209,6 +255,65 @@ public class HiveSink extends AbstractSink implements Configurable {
     }
   }
 
+  private static boolean hasCredentialChanged(String oldKerberosKeytab, String oldKerberosPrincipal,
+                                            String newKerberosKeytab, String newKerberosPrincipal) {
+    // see of keytab changed
+    if ( hasChanged(oldKerberosKeytab, newKerberosKeytab) )
+      return true;
+
+    // see of principal changed
+    if ( hasChanged(oldKerberosPrincipal, newKerberosPrincipal) )
+      return true;
+
+      return false;
+  }
+
+  private static boolean hasChanged(String oldVal, String newVal) {
+    if( oldVal == null) {
+       if ( newVal != null ) {
+         return true;
+       }
+      return false;
+    } else {
+      if (newVal == null) {
+        return true;
+      }
+    }
+    if( oldVal.compareTo(newVal) != 0) {
+      return true;
+    }
+    return false;
+  }
+
+  // Synchronized to ensure atomic loginUserFromKeytab() + getLoginUser()
+  private static synchronized UserGroupInformation authenticate(String keytab, String principal)
+          throws AuthenticationFailed {
+    // 0) Check keytab file is readable
+    File kfile = new File(keytab);
+    if (!(kfile.isFile() && kfile.canRead())) {
+      throw new IllegalArgumentException("The keyTab file: "
+              + keytab + " is nonexistent or can't read. "
+              + "Please specify a readable keytab file for Kerberos auth.");
+    }
+
+    // 1) resolve _HOST pattern in principal via DNS (as 2nd argument is empty)
+    try {
+      principal = SecurityUtil.getServerPrincipal(principal, "");
+      Preconditions.checkNotNull(principal, "Principal resolved to null");
+    } catch (Exception e) {
+      throw new AuthenticationFailed("Host lookup error when resolving principal " + principal, e);
+    }
+
+    // 2) Login with principal & keytab
+    try {
+      UserGroupInformation.loginUserFromKeytab(principal, keytab);
+      return UserGroupInformation.getLoginUser();
+    } catch (IOException e) {
+      throw new AuthenticationFailed("Login failed for principal " + principal, e);
+    }
+  }
+
+
   @VisibleForTesting
   protected SinkCounter getCounter() {
     return sinkCounter;
@@ -230,7 +335,9 @@ public class HiveSink extends AbstractSink implements Configurable {
     }
   }
 
-
+  HiveEventSerializer serializer;
+  private boolean kerberosEnabled;
+  private UserGroupInformation ugi;
   /**
    * Pull events out of channel, find corresponding HiveWriter and write to it.
    * Take at most batchSize events per Transaction. <br/>
@@ -341,7 +448,7 @@ public class HiveSink extends AbstractSink implements Configurable {
       if (writer == null) {
         LOG.info(getName() + ": Creating Writer to Hive end point : " + endPoint);
         writer = new HiveWriter(endPoint, txnsPerBatchAsk, autoCreatePartitions,
-                callTimeout, callTimeoutPool, proxyUser, serializer, sinkCounter);
+                callTimeout, callTimeoutPool, ugi, serializer, sinkCounter);
 
         sinkCounter.incrementConnectionCreatedCount();
         if (allWriters.size() > maxOpenConnections) {

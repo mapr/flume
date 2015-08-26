@@ -14,18 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# If this file is placed at FLUME_CONF_DIR/flume-env.sh, it will be sourced
-# during Flume startup.
-
-# Enviroment variables can be set here.
-
-# export JAVA_HOME=/usr/lib/jvm/java-6-sun
 
 # Give Flume more memory and pre-allocate, enable remote monitoring via JMX
-# export JAVA_OPTS="-Xms100m -Xmx2000m -Dcom.sun.management.jmxremote"
+$JAVA_OPTS="-Xms100m -Xmx2000m -Dcom.sun.management.jmxremote"
 
+# Foll. classpath will be included in Flume's classpath.
 # Note that the Flume conf directory is always included in the classpath.
-#FLUME_CLASSPATH=""
+$FLUME_CLASSPATH=""   # Example:  "path1;path2;path3"
 
-# export HIVE_HOME=/usr/lib/hive
-# export HCAT_HOME=/usr/lib/hive-hcatalog
+# $HIVE_HOME=
+# $HCAT_HOME=

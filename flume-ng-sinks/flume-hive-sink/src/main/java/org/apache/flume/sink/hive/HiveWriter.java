@@ -27,6 +27,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hive.hcatalog.streaming.*;
 
 import org.apache.flume.Event;
@@ -68,13 +69,14 @@ class HiveWriter {
   private boolean autoCreatePartitions;
 
   private boolean hearbeatNeeded = false;
+  private UserGroupInformation ugi;
 
   private final int writeBatchSz = 1000;
   private ArrayList<Event> batch = new ArrayList<Event>(writeBatchSz);
 
   HiveWriter(HiveEndPoint endPoint, int txnsPerBatch,
              boolean autoCreatePartitions, long callTimeout,
-             ExecutorService callTimeoutPool, String hiveUser,
+             ExecutorService callTimeoutPool, UserGroupInformation ugi,
              HiveEventSerializer serializer, SinkCounter sinkCounter)
           throws ConnectException, InterruptedException {
     try {
@@ -83,7 +85,8 @@ class HiveWriter {
       this.callTimeout = callTimeout;
       this.callTimeoutPool = callTimeoutPool;
       this.endPoint = endPoint;
-      this.connection = newConnection(hiveUser);
+      this.ugi = ugi;
+      this.connection = newConnection(ugi);
       this.txnsPerBatch = txnsPerBatch;
       this.serializer = serializer;
       this.recordWriter = serializer.createRecordWriter(endPoint);
@@ -307,13 +310,13 @@ class HiveWriter {
     }
   }
 
-  private StreamingConnection newConnection(final String proxyUser)
+  private StreamingConnection newConnection(final UserGroupInformation ugi)
           throws InterruptedException, ConnectException {
     try {
       return  timedCall(new CallRunner1<StreamingConnection>() {
         @Override
         public StreamingConnection call() throws InterruptedException, StreamingException {
-          return endPoint.newConnection(autoCreatePartitions); // could block
+          return endPoint.newConnection(autoCreatePartitions, null, ugi); // could block
         }
       });
     } catch (Exception e) {

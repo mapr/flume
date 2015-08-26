@@ -39,6 +39,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.hadoop.security.UserGroupInformation;
+
 /**
  * Internal API intended for HiveSink use.
  */
@@ -68,13 +70,14 @@ class HiveWriter {
   private boolean autoCreatePartitions;
 
   private boolean hearbeatNeeded = false;
+  private UserGroupInformation ugi;
 
   private final int writeBatchSz = 1000;
   private ArrayList<Event> batch = new ArrayList<Event>(writeBatchSz);
 
   HiveWriter(HiveEndPoint endPoint, int txnsPerBatch,
              boolean autoCreatePartitions, long callTimeout,
-             ExecutorService callTimeoutPool, String hiveUser,
+             ExecutorService callTimeoutPool, UserGroupInformation ugi,
              HiveEventSerializer serializer, SinkCounter sinkCounter)
       throws ConnectException, InterruptedException {
     try {
@@ -83,12 +86,12 @@ class HiveWriter {
       this.callTimeout = callTimeout;
       this.callTimeoutPool = callTimeoutPool;
       this.endPoint = endPoint;
-      this.connection = newConnection(hiveUser);
+      this.ugi = ugi;
+      this.connection = newConnection(ugi);
       this.txnsPerBatch = txnsPerBatch;
       this.serializer = serializer;
       this.recordWriter = serializer.createRecordWriter(endPoint);
       this.txnBatch = nextTxnBatch(recordWriter);
-      this.txnBatch.beginNextTransaction();
       this.closed = false;
       this.lastUsed = System.currentTimeMillis();
     } catch (InterruptedException e) {
@@ -370,13 +373,13 @@ class HiveWriter {
     }
   }
 
-  private StreamingConnection newConnection(final String proxyUser)
-      throws InterruptedException, ConnectException {
+  private StreamingConnection newConnection(final UserGroupInformation ugi)
+          throws InterruptedException, ConnectException {
     try {
       return timedCall(new CallRunner1<StreamingConnection>() {
         @Override
         public StreamingConnection call() throws InterruptedException, StreamingException {
-          return endPoint.newConnection(autoCreatePartitions); // could block
+          return endPoint.newConnection(autoCreatePartitions, null, ugi); // could block
         }
       });
     } catch (Exception e) {
@@ -395,7 +398,8 @@ class HiveWriter {
           return connection.fetchTransactionBatch(txnsPerBatch, recordWriter); // could block
         }
       });
-      LOG.info("Acquired Transaction batch {}", batch);
+      LOG.info("Acquired Txn Batch {}. Switching to first txn", batch);
+      batch.beginNextTransaction();
     } catch (Exception e) {
       throw new TxnBatchException(endPoint, e);
     }

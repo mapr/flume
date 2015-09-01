@@ -28,8 +28,8 @@ limitations under the License.
 
   <properties>
     <!-- TODO fix spotbugs/pmd violations -->
-    <spotbugs.maxAllowedViolations>6</spotbugs.maxAllowedViolations>
-    <pmd.maxAllowedViolations>7</pmd.maxAllowedViolations>
+    <spotbugs.maxAllowedViolations>8</spotbugs.maxAllowedViolations>
+    <pmd.maxAllowedViolations>9</pmd.maxAllowedViolations>
   </properties>
 
   <groupId>org.apache.flume.flume-ng-sinks</groupId>
@@ -130,6 +130,12 @@ limitations under the License.
       <groupId>org.mockito</groupId>
       <artifactId>mockito-all</artifactId>
       <scope>test</scope>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>

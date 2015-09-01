@@ -54,6 +54,7 @@ limitations under the License.
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-core</artifactId>
           <version>${hadoop.version}</version>
+          <scope>provided</scope>
         </dependency>
       </dependencies>
     </profile>
@@ -95,6 +96,7 @@ limitations under the License.
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-common</artifactId>
           <optional>true</optional>
+          <scope>provided</scope>
         </dependency>
 
         <dependency>

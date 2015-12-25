@@ -22,6 +22,7 @@ import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 import kafka.producer.ProducerConfig;
 import kafka.admin.AdminUtils;
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import kafka.utils.ZKStringSerializer$;
 

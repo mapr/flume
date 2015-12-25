@@ -141,6 +141,10 @@
       <artifactId>flume-kafka-channel</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.flume.flume-ng-channels</groupId>
+      <artifactId>flume-kafka-channel-v08</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.apache.flume.flume-ng-sinks</groupId>
       <artifactId>flume-hdfs-sink</artifactId>
     </dependency>
@@ -165,6 +169,10 @@
       <artifactId>flume-ng-kafka-sink</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.flume.flume-ng-sinks</groupId>
+      <artifactId>flume-ng-kafka-sink-v08</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.apache.flume.flume-ng-sources</groupId>
       <artifactId>flume-scribe-source</artifactId>
     </dependency>
@@ -179,6 +187,10 @@
     <dependency>
       <groupId>org.apache.flume.flume-ng-sources</groupId>
       <artifactId>flume-kafka-source</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flume.flume-ng-sources</groupId>
+      <artifactId>flume-kafka-source-v08</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.flume.flume-ng-legacy-sources</groupId>

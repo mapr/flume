@@ -159,6 +159,16 @@ add_hive_paths(){
   fi
 }
 
+add_streams_paths(){
+  local MAPR_LIB_DIR="${BASEMAPR}/lib"
+  local MAPR_STREAMS=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )
+  local STREAMS_CLIENTS=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null)
+  if [ ! -z "$MAPR_STREAMS" ] && [ ! -z "$STREAMS_CLIENTS" ]; then
+    info "Including MapR Streams libraries found in ($MAPR_LIB_DIR) for Streams access"
+    FLUME_CLASSPATH="${MAPR_STREAMS}:${STREAMS_CLIENTS}:${FLUME_CLASSPATH}"
+  fi
+}
+
 set_LD_LIBRARY_PATH(){
 #Append the FLUME_JAVA_LIBRARY_PATH to whatever the user may have specified in
 #flume-env.sh
@@ -505,6 +515,7 @@ fi
 add_hadoop_paths
 add_HBASE_paths
 add_hive_paths
+add_streams_paths
 
 # prepend conf dir to classpath
 if [ -n "$opt_conf" ]; then

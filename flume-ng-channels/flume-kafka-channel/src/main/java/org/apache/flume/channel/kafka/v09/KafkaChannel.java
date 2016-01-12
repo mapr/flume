@@ -1,0 +1,582 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.flume.channel.kafka.v09;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Optional;
+import org.apache.avro.io.BinaryDecoder;
+import org.apache.avro.io.BinaryEncoder;
+import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.io.EncoderFactory;
+import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.avro.specific.SpecificDatumWriter;
+import org.apache.flume.ChannelException;
+import org.apache.flume.Context;
+import org.apache.flume.Event;
+import org.apache.flume.FlumeException;
+import org.apache.flume.channel.BasicChannelSemantics;
+import org.apache.flume.channel.BasicTransactionSemantics;
+import org.apache.flume.conf.ConfigurationException;
+import org.apache.flume.event.EventBuilder;
+import org.apache.flume.instrumentation.kafka.KafkaChannelCounter;
+import org.apache.flume.source.avro.AvroFlumeEvent;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class KafkaChannel extends BasicChannelSemantics {
+
+  private final static Logger logger =
+          LoggerFactory.getLogger(KafkaChannel.class);
+
+  private final Properties consumerProps = new Properties();
+  private final Properties producerProps = new Properties();
+
+  private KafkaProducer<String, byte[]> producer;
+  private final String channelUUID = UUID.randomUUID().toString();
+
+  private AtomicReference<String> topic = new AtomicReference<String>();
+  private boolean parseAsFlumeEvent = KafkaChannelConfiguration.DEFAULT_PARSE_AS_FLUME_EVENT;
+  private boolean isStreams = false;
+  //used to indicate if a rebalance has occurred during the current transaction
+  AtomicBoolean rebalanceFlag = new AtomicBoolean();
+  //This isn't a Kafka property per se, but we allow it to be configurable
+  private long pollTimeout = KafkaChannelConfiguration.DEFAULT_POLL_TIMEUT;
+
+
+  // Track all consumers to close them eventually.
+  private final List<ConsumerAndRecords> consumers =
+          Collections.synchronizedList(new LinkedList<ConsumerAndRecords>());
+
+  private KafkaChannelCounter counter;
+
+  private final ThreadLocal<ConsumerAndRecords> consumerAndRecords = new
+          ThreadLocal<ConsumerAndRecords>() {
+            @Override
+            public ConsumerAndRecords initialValue() {
+              return createConsumerAndRecords();
+            }
+          };
+
+  @Override
+  public void start() {
+    try {
+      logger.info("Starting Kafka Channel: {}", getName());
+      producer = new KafkaProducer<String, byte[]>(producerProps);
+      // We always have just one topic being read by one thread
+      logger.info("Topic = {}", topic.get());
+      counter.start();
+      super.start();
+    } catch (Exception e) {
+      logger.error("Could not start producer");
+      throw new FlumeException("Unable to create Kafka Connections. " +
+              "Check whether Kafka Brokers are up and that the " +
+              "Flume agent can connect to it.", e);
+    }
+  }
+
+  @Override
+  public void stop() {
+    for (ConsumerAndRecords c : consumers) {
+      try {
+        decommissionConsumerAndRecords(c);
+      } catch (Exception ex) {
+        logger.warn("Error while shutting down consumer.", ex);
+      }
+    }
+    producer.close();
+    counter.stop();
+    super.stop();
+    logger.info("Kafka channel {} stopped. Metrics: {}", getName(),
+            counter);
+  }
+
+  @Override
+  protected BasicTransactionSemantics createTransaction() {
+    return new KafkaTransaction();
+  }
+
+  @Override
+  public void configure(Context ctx) {
+    String topicStr = ctx.getString(KafkaChannelConfiguration.TOPIC_CONFIG);
+    if (topicStr == null || topicStr.isEmpty()) {
+      topicStr = KafkaChannelConfiguration.DEFAULT_TOPIC;
+      logger.info("Topic was not specified. Using {} as the topic.", topicStr);
+    }
+    if (topicStr.startsWith("/")) {
+      isStreams = true;
+    }
+    topic.set(topicStr);
+    String bootStrapServers = ctx.getString(KafkaChannelConfiguration.BOOTSTRAP_SERVERS_CONFIG);
+
+    setProducerProps(ctx, bootStrapServers);
+    setConsumerProps(ctx, bootStrapServers);
+
+    parseAsFlumeEvent = ctx.getBoolean(KafkaChannelConfiguration.PARSE_AS_FLUME_EVENT, KafkaChannelConfiguration.DEFAULT_PARSE_AS_FLUME_EVENT);
+    pollTimeout = ctx.getLong(KafkaChannelConfiguration.POLL_TIMEOUT, KafkaChannelConfiguration.DEFAULT_POLL_TIMEUT);
+
+    if (counter == null) {
+      counter = new KafkaChannelCounter(getName());
+    }
+  }
+
+  private void setProducerProps(Context ctx, String bootStrapServers) {
+    producerProps.put(ProducerConfig.ACKS_CONFIG, KafkaChannelConfiguration.DEFAULT_ACKS);
+    producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaChannelConfiguration.DEFAULT_KEY_SERIALIZER);
+    producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaChannelConfiguration.DEFAULT_VALUE_SERIAIZER);
+    //Defaults overridden based on config
+    producerProps.putAll(ctx.getSubProperties(KafkaChannelConfiguration.KAFKA_PRODUCER_PREFIX));
+    if (bootStrapServers != null)
+      producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+    logger.info("Producer properties: " + producerProps.toString());
+  }
+
+  protected Properties getProducerProps() {
+    return producerProps;
+  }
+
+  private void setConsumerProps(Context ctx, String bootStrapServers) {
+    String groupId = ctx.getString(KafkaChannelConfiguration.KAFKA_CONSUMER_PREFIX + ConsumerConfig.GROUP_ID_CONFIG);
+    if (groupId == null || groupId.isEmpty()) {
+      groupId = KafkaChannelConfiguration.DEFAULT_GROUP_ID;
+      logger.info("Group ID was not specified. Using {} as the group id.", groupId);
+    }
+    consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaChannelConfiguration.DEFAULT_KEY_DESERIALIZER);
+    consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaChannelConfiguration.DEFAULT_VALUE_DESERIAIZER);
+    consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaChannelConfiguration.DEFAULT_AUTO_OFFSET_RESET);
+    //Defaults overridden based on config
+    consumerProps.putAll(ctx.getSubProperties(KafkaChannelConfiguration.KAFKA_CONSUMER_PREFIX));
+    //These always take precedence over config
+    if (bootStrapServers != null)
+      consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+    consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+    consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+
+    logger.info(consumerProps.toString());
+  }
+
+  private synchronized ConsumerAndRecords createConsumerAndRecords() {
+    try {
+      KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<String, byte[]>(consumerProps);
+      ConsumerAndRecords car = new ConsumerAndRecords(consumer, channelUUID);
+      logger.info("Created new consumer to connect to Kafka");
+      car.consumer.subscribe(Arrays.asList(topic.get()), new ChannelRebalanceListener(rebalanceFlag));
+      car.offsets = new HashMap<TopicPartition, OffsetAndMetadata>();
+      consumers.add(car);
+      return car;
+    } catch (Exception e) {
+      throw new FlumeException("Unable to connect to Kafka", e);
+    }
+  }
+
+  protected Properties getConsumerProps() {
+    return consumerProps;
+  }
+
+  private void decommissionConsumerAndRecords(ConsumerAndRecords c) {
+    if (c.failedEvents.isEmpty()) {
+      c.commitOffsets();
+    }
+    c.failedEvents.clear();
+    c.consumer.close();
+  }
+
+  @VisibleForTesting
+  void registerThread() {
+    try {
+      consumerAndRecords.get();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  private enum TransactionType {
+    PUT,
+    TAKE,
+    NONE
+  }
+
+
+  private class KafkaTransaction extends BasicTransactionSemantics {
+
+    private TransactionType type = TransactionType.NONE;
+    private Optional<ByteArrayOutputStream> tempOutStream = Optional
+            .absent();
+    // For put transactions, serialize the events and hold them until the commit goes is requested.
+    private Optional<LinkedList<ProducerRecord<String, byte[]>>> producerRecords = Optional.absent();
+    // For take transactions, deserialize and hold them till commit goes through
+    private Optional<LinkedList<Event>> events = Optional.absent();
+    private Optional<SpecificDatumWriter<AvroFlumeEvent>> writer =
+            Optional.absent();
+    private Optional<SpecificDatumReader<AvroFlumeEvent>> reader =
+            Optional.absent();
+    private Optional<LinkedList<Future<RecordMetadata>>> kafkaFutures =
+            Optional.absent();
+    private final String batchUUID = UUID.randomUUID().toString();
+
+    // Fine to use null for initial value, Avro will create new ones if this
+    // is null
+    private BinaryEncoder encoder = null;
+    private BinaryDecoder decoder = null;
+    private boolean eventTaken = false;
+
+    @Override
+    protected void doBegin() throws InterruptedException {
+      rebalanceFlag.set(false);
+    }
+
+    @Override
+    protected void doPut(Event event) throws InterruptedException {
+      type = TransactionType.PUT;
+      if (!producerRecords.isPresent()) {
+        producerRecords = Optional.of(new LinkedList<ProducerRecord<String, byte[]>>());
+      }
+      String key = event.getHeaders().get(KafkaChannelConfiguration.KEY_HEADER);
+      try {
+        producerRecords.get().add(new ProducerRecord<String, byte[]>
+                (topic.get(), key, serializeValue(event, parseAsFlumeEvent)));
+      } catch (Exception e) {
+        throw new ChannelException("Error while serializing event", e);
+      }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    protected Event doTake() throws InterruptedException {
+      type = TransactionType.TAKE;
+      try {
+        if (!(consumerAndRecords.get().uuid.equals(channelUUID))) {
+          logger.info("UUID mismatch, creating new consumer");
+          decommissionConsumerAndRecords(consumerAndRecords.get());
+          consumerAndRecords.remove();
+        }
+      } catch (Exception ex) {
+        logger.warn("Error while shutting down consumer", ex);
+      }
+      if (!events.isPresent()) {
+        events = Optional.of(new LinkedList<Event>());
+      }
+      Event e;
+      // Give the channel a chance to commit if there has been a rebalance
+      if (rebalanceFlag.get()) {
+        logger.debug("Returning null event after Consumer rebalance.");
+        return null;
+      }
+      if (!consumerAndRecords.get().failedEvents.isEmpty()) {
+        e = consumerAndRecords.get().failedEvents.removeFirst();
+      } else {
+
+        if (logger.isDebugEnabled()) {
+          logger.debug("Assigment: {}", consumerAndRecords.get().consumer.assignment().toString());
+        }
+
+        try {
+          long startTime = System.nanoTime();
+          if (!consumerAndRecords.get().recordIterator.hasNext()) {
+            consumerAndRecords.get().poll();
+          }
+          if (consumerAndRecords.get().recordIterator.hasNext()) {
+            ConsumerRecord<String, byte[]> record = consumerAndRecords.get().recordIterator.next();
+            e = deserializeValue(record.value(), parseAsFlumeEvent);
+            TopicPartition tp = new TopicPartition(record.topic(), record.partition());
+
+            // For MapR Streams we need to commit offset of record X (not X+1 as for Kafka)
+            // when we want to fetch a record X+1 for the next poll after rebalance.
+            long offset = isStreams ? record.offset() : record.offset() + 1;
+            OffsetAndMetadata oam = new OffsetAndMetadata(offset, batchUUID);
+            consumerAndRecords.get().offsets.put(tp, oam);
+
+            if (logger.isTraceEnabled()) {
+              logger.trace("Took offset: {}", consumerAndRecords.get().offsets.toString());
+            }
+
+            //Add the key to the header
+            e.getHeaders().put(KafkaChannelConfiguration.KEY_HEADER, record.key());
+
+            if (logger.isDebugEnabled()) {
+              logger.debug("Processed output from partition {} offset {}", record.partition(), record.offset());
+            }
+
+            long endTime = System.nanoTime();
+            counter.addToKafkaEventGetTimer((endTime - startTime) / (1000 * 1000));
+          } else {
+            return null;
+          }
+        } catch (Exception ex) {
+          logger.warn("Error while getting events from Kafka. This is usually caused by trying to read " +
+                  "a non-flume event. Ensure the setting for parseAsFlumeEvent is correct", ex);
+          throw new ChannelException("Error while getting events from Kafka",
+                  ex);
+        }
+      }
+      eventTaken = true;
+      events.get().add(e);
+      return e;
+    }
+
+    @Override
+    protected void doCommit() throws InterruptedException {
+      if (type.equals(TransactionType.NONE)) {
+        return;
+      }
+      if (type.equals(TransactionType.PUT)) {
+        if (!kafkaFutures.isPresent()) {
+          kafkaFutures = Optional.of(new LinkedList<Future<RecordMetadata>>());
+        }
+        try {
+          long batchSize = producerRecords.get().size();
+          long startTime = System.nanoTime();
+          int index = 0;
+          for (ProducerRecord<String, byte[]> record : producerRecords.get()) {
+            index++;
+            kafkaFutures.get().add(producer.send(record, new ChannelCallback(index, startTime)));
+          }
+          //prevents linger.ms from being a problem
+          producer.flush();
+
+          for (Future<RecordMetadata> future : kafkaFutures.get()) {
+            future.get();
+          }
+          long endTime = System.nanoTime();
+          counter.addToKafkaEventSendTimer((endTime - startTime) / (1000 * 1000));
+          counter.addToEventPutSuccessCount(batchSize);
+          producerRecords.get().clear();
+          kafkaFutures.get().clear();
+        } catch (Exception ex) {
+          logger.warn("Sending events to Kafka failed", ex);
+          throw new ChannelException("Commit failed as send to Kafka failed",
+                  ex);
+        }
+      } else {
+        if (consumerAndRecords.get().failedEvents.isEmpty() && eventTaken) {
+          long startTime = System.nanoTime();
+          consumerAndRecords.get().commitOffsets();
+          long endTime = System.nanoTime();
+          counter.addToKafkaCommitTimer((endTime - startTime) / (1000 * 1000));
+          consumerAndRecords.get().printCurrentAssignment();
+        }
+        counter.addToEventTakeSuccessCount(Long.valueOf(events.get().size()));
+        events.get().clear();
+      }
+    }
+
+    @Override
+    protected void doRollback() throws InterruptedException {
+      if (type.equals(TransactionType.NONE)) {
+        return;
+      }
+      if (type.equals(TransactionType.PUT)) {
+        producerRecords.get().clear();
+        kafkaFutures.get().clear();
+      } else {
+        counter.addToRollbackCounter(Long.valueOf(events.get().size()));
+        consumerAndRecords.get().failedEvents.addAll(events.get());
+        events.get().clear();
+      }
+    }
+
+    private byte[] serializeValue(Event event, boolean parseAsFlumeEvent) throws IOException {
+      byte[] bytes;
+      if (parseAsFlumeEvent) {
+        if (!tempOutStream.isPresent()) {
+          tempOutStream = Optional.of(new ByteArrayOutputStream());
+        }
+        if (!writer.isPresent()) {
+          writer = Optional.of(new
+                  SpecificDatumWriter<AvroFlumeEvent>(AvroFlumeEvent.class));
+        }
+        tempOutStream.get().reset();
+        AvroFlumeEvent e = new AvroFlumeEvent(
+                toCharSeqMap(event.getHeaders()),
+                ByteBuffer.wrap(event.getBody()));
+        encoder = EncoderFactory.get()
+                .directBinaryEncoder(tempOutStream.get(), encoder);
+        writer.get().write(e, encoder);
+        encoder.flush();
+        bytes = tempOutStream.get().toByteArray();
+      } else {
+        bytes = event.getBody();
+      }
+      return bytes;
+    }
+
+    private Event deserializeValue(byte[] value, boolean parseAsFlumeEvent) throws IOException {
+      Event e;
+      if (parseAsFlumeEvent) {
+        ByteArrayInputStream in =
+                new ByteArrayInputStream(value);
+        decoder = DecoderFactory.get().directBinaryDecoder(in, decoder);
+        if (!reader.isPresent()) {
+          reader = Optional.of(
+                  new SpecificDatumReader<AvroFlumeEvent>(AvroFlumeEvent.class));
+        }
+        AvroFlumeEvent event = reader.get().read(null, decoder);
+        e = EventBuilder.withBody(event.getBody().array(),
+                toStringMap(event.getHeaders()));
+      } else {
+        e = EventBuilder.withBody(value, Collections.EMPTY_MAP);
+      }
+      return e;
+    }
+  }
+
+  /**
+   * Helper function to convert a map of String to a map of CharSequence.
+   */
+  private static Map<CharSequence, CharSequence> toCharSeqMap(Map<String, String> stringMap) {
+    Map<CharSequence, CharSequence> charSeqMap =
+            new HashMap<CharSequence, CharSequence>();
+    for (Map.Entry<String, String> entry : stringMap.entrySet()) {
+      charSeqMap.put(entry.getKey(), entry.getValue());
+    }
+    return charSeqMap;
+  }
+
+  /**
+   * Helper function to convert a map of CharSequence to a map of String.
+   */
+  private static Map<String, String> toStringMap(Map<CharSequence, CharSequence> charSeqMap) {
+    Map<String, String> stringMap = new HashMap<String, String>();
+    for (Map.Entry<CharSequence, CharSequence> entry : charSeqMap.entrySet()) {
+      stringMap.put(entry.getKey().toString(), entry.getValue().toString());
+    }
+    return stringMap;
+  }
+
+  /* Object to store our consumer */
+  private class ConsumerAndRecords {
+    final KafkaConsumer<String, byte[]> consumer;
+    final String uuid;
+    final LinkedList<Event> failedEvents = new LinkedList<Event>();
+
+    ConsumerRecords<String, byte[]> records;
+    Iterator<ConsumerRecord<String, byte[]>> recordIterator;
+    Map<TopicPartition, OffsetAndMetadata> offsets;
+
+    ConsumerAndRecords(KafkaConsumer<String, byte[]> consumer, String uuid) {
+      this.consumer = consumer;
+      this.uuid = uuid;
+      this.records = ConsumerRecords.empty();
+      this.recordIterator = records.iterator();
+    }
+
+    void poll() {
+      this.records = consumer.poll(pollTimeout);
+      this.recordIterator = records.iterator();
+      logger.trace("polling");
+    }
+
+    void commitOffsets() {
+      this.consumer.commitSync(offsets);
+    }
+
+    // This will reset the latest assigned partitions to the last committed offsets;
+
+    public void printCurrentAssignment() {
+      StringBuilder sb = new StringBuilder();
+      for (TopicPartition tp : this.consumer.assignment()) {
+        try {
+          sb.append("Committed: [").append(tp).append(",").append(this.consumer.committed(tp).offset())
+                  .append(",").append(this.consumer.committed(tp).metadata()).append("]");
+          logger.info(sb.toString());
+        } catch (NullPointerException npe) {
+          logger.info("Committed {}", tp);
+        }
+      }
+    }
+  }
+}
+
+// Throw exception if there is an error
+class ChannelCallback implements Callback {
+  private static final Logger log = LoggerFactory.getLogger(ChannelCallback.class);
+  private int index;
+  private long startTime;
+
+  public ChannelCallback(int index, long startTime) {
+    this.index = index;
+    this.startTime = startTime;
+  }
+
+  public void onCompletion(RecordMetadata metadata, Exception exception) {
+    if (exception != null) {
+      log.trace("Error sending message to Kafka due to " + exception.getMessage());
+    }
+    if (log.isDebugEnabled()) {
+      long batchElapsedTime = System.currentTimeMillis() - startTime;
+      log.debug("Acked message_no " + index + ": " + metadata.topic() + "-" + metadata.partition() + "-" +
+              metadata.offset() + "-" + batchElapsedTime);
+    }
+  }
+}
+
+class ChannelRebalanceListener implements ConsumerRebalanceListener {
+  private static final Logger log = LoggerFactory.getLogger(ChannelRebalanceListener.class);
+  private AtomicBoolean rebalanceFlag;
+
+  public ChannelRebalanceListener(AtomicBoolean rebalanceFlag) {
+    this.rebalanceFlag = rebalanceFlag;
+  }
+
+  // Set a flag that a rebalance has occurred. Then we can commit the currently written transactions
+  // on the next doTake() pass.
+  public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+    for (TopicPartition partition : partitions) {
+      log.info("topic {} - partition {} revoked.", partition.topic(), partition.partition());
+      rebalanceFlag.set(true);
+    }
+  }
+
+  public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+    for (TopicPartition partition : partitions) {
+      log.info("topic {} - partition {} assigned.", partition.topic(), partition.partition());
+    }
+  }
+}
+
+

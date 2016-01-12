@@ -50,6 +50,8 @@ limitations under the License.
     <elasticsearch.version>0.90.1</elasticsearch.version>
     <hadoop2.version>2.4.0</hadoop2.version>
     <thrift.version>0.7.0</thrift.version>
+    <kafka.version>0.9.0.0</kafka.version>
+    <kafka.v08.version>0.8.1.1</kafka.v08.version>
     <kite.version>1.0.0</kite.version>
     <hive.version>1.0.0</hive.version>
     <xalan.verion>2.7.1</xalan.verion>
@@ -1154,6 +1156,12 @@ limitations under the License.
 
       <dependency>
         <groupId>org.apache.flume.flume-ng-channels</groupId>
+        <artifactId>flume-kafka-channel-v08</artifactId>
+        <version>1.6.0-mapr</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.flume.flume-ng-channels</groupId>
         <artifactId>flume-spillable-memory-channel</artifactId>
         <version>1.6.0-mapr</version>
       </dependency>
@@ -1207,6 +1215,12 @@ limitations under the License.
       </dependency>
 
       <dependency>
+        <groupId>org.apache.flume.flume-ng-sinks</groupId>
+        <artifactId>flume-ng-kafka-sink-v08</artifactId>
+        <version>1.6.0-mapr</version>
+      </dependency>
+
+      <dependency>
         <groupId>org.apache.flume.flume-ng-sources</groupId>
         <artifactId>flume-scribe-source</artifactId>
         <version>1.6.0-mapr</version>
@@ -1233,6 +1247,12 @@ limitations under the License.
       <dependency>
         <groupId>org.apache.flume.flume-ng-sources</groupId>
         <artifactId>flume-kafka-source</artifactId>
+        <version>1.6.0-mapr</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.flume.flume-ng-sources</groupId>
+        <artifactId>flume-kafka-source-v08</artifactId>
         <version>1.6.0-mapr</version>
       </dependency>
 
@@ -1342,20 +1362,6 @@ limitations under the License.
         <groupId>org.twitter4j</groupId>
         <artifactId>twitter4j-stream</artifactId>
         <version>3.0.3</version>
-      </dependency>
-
-      <!-- Dependencies of Kafka source -->
-      <dependency>
-        <groupId>org.apache.kafka</groupId>
-        <artifactId>kafka_2.10</artifactId>
-        <version>0.8.1.1</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.kafka</groupId>
-        <artifactId>kafka_2.10</artifactId>
-        <version>0.8.1.1</version>
-        <classifier>test</classifier>
-        <scope>test</scope>
       </dependency>
 
       <dependency>

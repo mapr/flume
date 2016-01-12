@@ -177,13 +177,14 @@ public class KafkaChannel extends BasicChannelSemantics {
       throw new ConfigurationException(
         "Zookeeper Connection must be specified");
     }
-    Long timeout = ctx.getLong(TIMEOUT, Long.valueOf(DEFAULT_TIMEOUT));
     kafkaConf.putAll(ctx.getSubProperties(KAFKA_PREFIX));
     kafkaConf.put(GROUP_ID, groupId);
     kafkaConf.put(BROKER_LIST_KEY, brokerList);
     kafkaConf.put(ZOOKEEPER_CONNECT, zkConnect);
     kafkaConf.put(AUTO_COMMIT_ENABLED, String.valueOf(false));
-    kafkaConf.put(CONSUMER_TIMEOUT, String.valueOf(timeout));
+    if(kafkaConf.get(CONSUMER_TIMEOUT) == null) {
+      kafkaConf.put(CONSUMER_TIMEOUT, DEFAULT_TIMEOUT);
+    }
     kafkaConf.put(REQUIRED_ACKS_KEY, "-1");
     LOGGER.info(kafkaConf.toString());
     parseAsFlumeEvent =
@@ -260,21 +261,26 @@ public class KafkaChannel extends BasicChannelSemantics {
       }
 
       try {
-        if (!tempOutStream.isPresent()) {
-          tempOutStream = Optional.of(new ByteArrayOutputStream());
+        if (parseAsFlumeEvent) {
+          if (!tempOutStream.isPresent()) {
+            tempOutStream = Optional.of(new ByteArrayOutputStream());
+          }
+          if (!writer.isPresent()) {
+            writer = Optional.of(new
+              SpecificDatumWriter<AvroFlumeEvent>(AvroFlumeEvent.class));
+          }
+          tempOutStream.get().reset();
+          AvroFlumeEvent e = new AvroFlumeEvent(
+            toCharSeqMap(event.getHeaders()),
+            ByteBuffer.wrap(event.getBody()));
+          encoder = EncoderFactory.get()
+            .directBinaryEncoder(tempOutStream.get(), encoder);
+          writer.get().write(e, encoder);
+          // Not really possible to avoid this copy :(
+          serializedEvents.get().add(tempOutStream.get().toByteArray());
+        } else {
+          serializedEvents.get().add(event.getBody());
         }
-        if (!writer.isPresent()) {
-          writer = Optional.of(new
-            SpecificDatumWriter<AvroFlumeEvent>(AvroFlumeEvent.class));
-        }
-        tempOutStream.get().reset();
-        AvroFlumeEvent e = new AvroFlumeEvent(
-          toCharSeqMap(event.getHeaders()), ByteBuffer.wrap(event.getBody()));
-        encoder = EncoderFactory.get()
-          .directBinaryEncoder(tempOutStream.get(), encoder);
-        writer.get().write(e, encoder);
-        // Not really possible to avoid this copy :(
-        serializedEvents.get().add(tempOutStream.get().toByteArray());
       } catch (Exception e) {
         throw new ChannelException("Error while serializing event", e);
       }

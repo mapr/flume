@@ -35,6 +35,8 @@ import org.apache.flume.event.EventBuilder;
 import org.apache.flume.sink.kafka.util.TestUtil;
 import org.junit.*;
 
+import static org.apache.flume.channel.kafka.KafkaChannelConfiguration.*;
+
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -134,6 +136,59 @@ public class TestKafkaChannel {
     producer.send(original);
     ExecutorCompletionService<Void> submitterSvc = new
       ExecutorCompletionService<Void>(Executors.newCachedThreadPool());
+    List<Event> events = pullEvents(channel, submitterSvc,
+      50, false, false);
+    wait(submitterSvc, 5);
+    Set<Integer> finals = Sets.newHashSet();
+    for (int i = 0; i < 50; i++) {
+      finals.add(Integer.parseInt(new String(events.get(i).getBody())));
+    }
+    for (int i = 0; i < 50; i++) {
+      Assert.assertTrue(finals.contains(i));
+      finals.remove(i);
+    }
+    Assert.assertTrue(finals.isEmpty());
+    channel.stop();
+  }
+
+  @Test
+  public void testTimeoutConfig() throws Exception {
+    Context context = prepareDefaultContext(true);
+    KafkaChannel channel = new KafkaChannel();
+    Configurables.configure(channel, context);
+    Assert.assertTrue(channel.getKafkaConf().get(CONSUMER_TIMEOUT)
+      .equals(DEFAULT_TIMEOUT));
+
+    String timeout = "1000";
+    context.put("kafka."+CONSUMER_TIMEOUT, timeout);
+    channel = new KafkaChannel();
+    Configurables.configure(channel, context);
+    Assert.assertTrue(channel.getKafkaConf().get(CONSUMER_TIMEOUT)
+            .equals(timeout));
+  }
+
+  /**
+   * Like the previous test but here we write to the channel like a Flume source would do
+   * to verify that the events are written as text and not as an Avro object
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testWritingToNoParsingAsFlumeAgent() throws Exception {
+    final KafkaChannel channel = startChannel(false);
+
+    List<String> msgs = new ArrayList<String>();
+    for (int i = 0; i < 50; i++){
+      msgs.add(String.valueOf(i));
+    }
+    Transaction tx = channel.getTransaction();
+    tx.begin();
+    for (int i = 0; i < msgs.size(); i++){
+      channel.put(EventBuilder.withBody(msgs.get(i).getBytes()));
+    }
+    tx.commit();
+    ExecutorCompletionService<Void> submitterSvc = new
+            ExecutorCompletionService<Void>(Executors.newCachedThreadPool());
     List<Event> events = pullEvents(channel, submitterSvc,
       50, false, false);
     wait(submitterSvc, 5);

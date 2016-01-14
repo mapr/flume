@@ -55,6 +55,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.security.JaasUtils;
 import org.apache.kafka.common.utils.Time;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Option;
@@ -97,6 +98,7 @@ public class KafkaChannel extends BasicChannelSemantics {
 
   private AtomicReference<String> topic = new AtomicReference<String>();
   private boolean parseAsFlumeEvent = DEFAULT_PARSE_AS_FLUME_EVENT;
+  private boolean isStreams = false;
   private String zookeeperConnect = null;
   private String topicStr = DEFAULT_TOPIC;
   private String groupId = DEFAULT_GROUP_ID;
@@ -175,6 +177,9 @@ public class KafkaChannel extends BasicChannelSemantics {
     if (topicStr == null || topicStr.isEmpty()) {
       topicStr = DEFAULT_TOPIC;
       logger.info("Topic was not specified. Using {} as the topic.", topicStr);
+    }
+    if (topicStr.startsWith("/")) {
+      isStreams = true;
     }
     topic.set(topicStr);
 
@@ -261,6 +266,9 @@ public class KafkaChannel extends BasicChannelSemantics {
     }
   }
 
+  private boolean isStreams(String topic) {
+    return topic.startsWith("/");
+  }
 
   private void setProducerProps(Context ctx, String bootStrapServers) {
     producerProps.clear();
@@ -291,6 +299,8 @@ public class KafkaChannel extends BasicChannelSemantics {
     consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
     KafkaSSLUtil.addGlobalSSLParameters(consumerProps);
+
+      logger.info(consumerProps.toString());
   }
 
   protected Properties getConsumerProps() {
@@ -501,8 +511,11 @@ public class KafkaChannel extends BasicChannelSemantics {
             ConsumerRecord<String, byte[]> record = consumerAndRecords.get().recordIterator.next();
             e = deserializeValue(record.value(), parseAsFlumeEvent);
             TopicPartition tp = new TopicPartition(record.topic(), record.partition());
-            OffsetAndMetadata oam = new OffsetAndMetadata(record.offset() + 1, batchUUID);
-            consumerAndRecords.get().saveOffsets(tp,oam);
+
+            // For MapR Streams we need to commit offset of record X (not X+1 as for Kafka)
+            // when we want to fetch a record X+1 for the next poll after rebalance.
+             long offset = isStreams ? record.offset() : record.offset() + 1;
+             OffsetAndMetadata oam = new OffsetAndMetadata(offset, batchUUID);            consumerAndRecords.get().saveOffsets(tp,oam);
 
             //Add the key to the header
             if (record.key() != null) {
@@ -725,13 +738,17 @@ public class KafkaChannel extends BasicChannelSemantics {
       StringBuilder sb = new StringBuilder();
       sb.append(getName()).append(" committed: ");
       for (TopicPartition tp : consumer.assignment()) {
-        try {
-          sb.append("[").append(tp).append(",")
-              .append(consumer.committed(tp).offset())
-              .append("] ");
-        } catch (NullPointerException npe) {
-          logger.debug("Committed {}", tp);
-        }
+          try {
+              sb.append("[").append(tp).append(",")
+                      .append(consumer.committed(tp).offset())
+                      .append("] ");
+          } catch (NullPointerException npe) {
+              logger.debug("Committed {}", tp);
+          } catch (UnknownTopicOrPartitionException e) {
+              if (logger.isDebugEnabled()) {
+                  logger.debug("Committed {}", tp);
+              }
+          }
       }
       return sb.toString();
     }

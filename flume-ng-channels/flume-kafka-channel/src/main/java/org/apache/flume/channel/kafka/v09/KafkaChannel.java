@@ -48,6 +48,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -525,6 +526,8 @@ public class KafkaChannel extends BasicChannelSemantics {
                   .append(",").append(this.consumer.committed(tp).metadata()).append("]");
           logger.info(sb.toString());
         } catch (NullPointerException npe) {
+          logger.info("Committed {}", tp);
+        } catch (UnknownTopicOrPartitionException e) {
           logger.info("Committed {}", tp);
         }
       }

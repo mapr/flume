@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Increment;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -107,6 +108,7 @@ public class HBaseSink extends AbstractSink implements Configurable {
   private boolean enableWal = true;
   private boolean batchIncrements = false;
   private Method refGetFamilyMap = null;
+  private Method refSetWriteToWAL = null;
   private SinkCounter sinkCounter;
   private PrivilegedExecutor privilegedExecutor;
 
@@ -253,6 +255,8 @@ public class HBaseSink extends AbstractSink implements Configurable {
       refGetFamilyMap = reflectLookupGetFamilyMap();
     }
 
+    refSetWriteToWAL = reflectLookupSetWriteToWAL();
+
     String zkQuorum = context.getString(HBaseSinkConfigurationConstants
       .ZK_QUORUM);
     Integer port = null;
@@ -374,11 +378,11 @@ public class HBaseSink extends AbstractSink implements Configurable {
       public Void run() throws Exception {
         for (Row r : actions) {
           if (r instanceof Put) {
-            ((Put) r).setWriteToWAL(enableWal);
+            setWriteToWAL((Put) r, enableWal);
           }
           // Newer versions of HBase - Increment implements Row.
           if (r instanceof Increment) {
-            ((Increment) r).setWriteToWAL(enableWal);
+            setWriteToWAL(((Increment) r), enableWal);
           }
         }
         table.batch(actions);
@@ -403,7 +407,7 @@ public class HBaseSink extends AbstractSink implements Configurable {
         }
 
         for (final Increment i : processedIncrements) {
-          i.setWriteToWAL(enableWal);
+          setWriteToWAL(i, enableWal);
           table.increment(i);
         }
         return null;
@@ -412,6 +416,29 @@ public class HBaseSink extends AbstractSink implements Configurable {
 
     txn.commit();
     sinkCounter.addToEventDrainSuccessCount(actions.size());
+  }
+
+  /**
+   * The method setWriteToWAL() changes its return value from void to Mutation
+   * We must use reflection to determine which version we may use.
+   */
+  static Method reflectLookupSetWriteToWAL() {
+    Method m = null;
+    String methodName = "setWriteToWAL";
+    try {
+      m = Mutation.class.getMethod(methodName, boolean.class);
+    } catch (NoSuchMethodException e) {
+      logger.debug("Mutation.{} does not exist. Exception follows.",
+              methodName, e);
+    } catch (SecurityException e) {
+      logger.debug("No access to Mutation.{}; Exception follows.",
+              methodName, e);
+    }
+    if (m == null) {
+      throw new UnsupportedOperationException(
+              "Cannot find Mutation.setWriteToWAL()");
+    }
+    return m;
   }
 
   /**
@@ -461,6 +488,20 @@ public class HBaseSink extends AbstractSink implements Configurable {
       Throwables.propagate(e);
     }
     return familyMap;
+  }
+
+  private void setWriteToWAL(Mutation mutation, boolean write) {
+    Preconditions.checkNotNull(refSetWriteToWAL,
+            "Mutation.setWriteToWAL() not found");
+    try {
+      refSetWriteToWAL.invoke(mutation, write);
+    } catch (IllegalAccessException e) {
+      logger.warn("Unexpected error calling setWriteToWAL()", e);
+      Throwables.propagate(e);
+    } catch (InvocationTargetException e) {
+      logger.warn("Unexpected error calling setWriteToWAL()", e);
+      Throwables.propagate(e);
+    }
   }
 
   /**

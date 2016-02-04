@@ -83,7 +83,6 @@ public class KafkaChannel extends BasicChannelSemantics {
 
   private AtomicReference<String> topic = new AtomicReference<String>();
   private boolean parseAsFlumeEvent = KafkaChannelConfiguration.DEFAULT_PARSE_AS_FLUME_EVENT;
-  private boolean isStreams = false;
   //used to indicate if a rebalance has occurred during the current transaction
   AtomicBoolean rebalanceFlag = new AtomicBoolean();
   //This isn't a Kafka property per se, but we allow it to be configurable
@@ -149,9 +148,7 @@ public class KafkaChannel extends BasicChannelSemantics {
       topicStr = KafkaChannelConfiguration.DEFAULT_TOPIC;
       logger.info("Topic was not specified. Using {} as the topic.", topicStr);
     }
-    if (topicStr.startsWith("/")) {
-      isStreams = true;
-    }
+
     topic.set(topicStr);
     String bootStrapServers = ctx.getString(KafkaChannelConfiguration.BOOTSTRAP_SERVERS_CONFIG);
 
@@ -326,10 +323,7 @@ public class KafkaChannel extends BasicChannelSemantics {
             e = deserializeValue(record.value(), parseAsFlumeEvent);
             TopicPartition tp = new TopicPartition(record.topic(), record.partition());
 
-            // For MapR Streams we need to commit offset of record X (not X+1 as for Kafka)
-            // when we want to fetch a record X+1 for the next poll after rebalance.
-            long offset = isStreams ? record.offset() : record.offset() + 1;
-            OffsetAndMetadata oam = new OffsetAndMetadata(offset, batchUUID);
+            OffsetAndMetadata oam = new OffsetAndMetadata(record.offset() + 1, batchUUID);
             consumerAndRecords.get().offsets.put(tp, oam);
 
             if (logger.isTraceEnabled()) {

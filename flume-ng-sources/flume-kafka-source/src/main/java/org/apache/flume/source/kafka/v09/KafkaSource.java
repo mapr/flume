@@ -85,7 +85,6 @@ public class KafkaSource extends AbstractPollableSource
   private int maxBatchDurationMillis;
 
   private List<String> topicList;
-  private boolean isStreams;
 
   /**
    * Lock critical section of code to be executed by one thread
@@ -160,11 +159,8 @@ public class KafkaSource extends AbstractPollableSource
           log.debug("Event #: {}", eventList.size());
         }
 
-        // For MapR Streams we need to commit offset of record X (not X+1 as for Kafka)
-        // when we want to fetch a record X+1 for the next poll after rebalance.
-        long offset = isStreams ? message.offset() : message.offset() + 1;
         toBeCommitted.put(new TopicPartition(message.topic(), message.partition()),
-                new OffsetAndMetadata(offset, batchUUID));
+                new OffsetAndMetadata(message.offset() + 1, batchUUID));
       }
 
       if (eventList.size() > 0) {
@@ -225,15 +221,6 @@ public class KafkaSource extends AbstractPollableSource
     // Subscribe to multiple topics.
     topicList = Arrays.asList(topics.split("^\\s+|\\s*,\\s*|\\s+$"));
 
-    // When all specified topics start with
-    // slash then MapR Streams are used
-    isStreams = true;
-    for (String topic : topicList) {
-      if (!topic.startsWith("/")) {
-        isStreams = false;
-        break;
-      }
-    }
     batchUpperLimit = context.getInteger(KafkaSourceConstants.BATCH_SIZE,
             KafkaSourceConstants.DEFAULT_BATCH_SIZE);
     maxBatchDurationMillis = context.getInteger(KafkaSourceConstants.BATCH_DURATION_MS,

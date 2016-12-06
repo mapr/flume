@@ -98,7 +98,6 @@ public class KafkaChannel extends BasicChannelSemantics {
 
   private AtomicReference<String> topic = new AtomicReference<String>();
   private boolean parseAsFlumeEvent = DEFAULT_PARSE_AS_FLUME_EVENT;
-  private boolean isStreams = false;
   private String zookeeperConnect = null;
   private String topicStr = DEFAULT_TOPIC;
   private String groupId = DEFAULT_GROUP_ID;
@@ -178,9 +177,7 @@ public class KafkaChannel extends BasicChannelSemantics {
       topicStr = DEFAULT_TOPIC;
       logger.info("Topic was not specified. Using {} as the topic.", topicStr);
     }
-    if (topicStr.startsWith("/")) {
-      isStreams = true;
-    }
+
     topic.set(topicStr);
 
     groupId = ctx.getString(KAFKA_CONSUMER_PREFIX + ConsumerConfig.GROUP_ID_CONFIG);
@@ -512,10 +509,8 @@ public class KafkaChannel extends BasicChannelSemantics {
             e = deserializeValue(record.value(), parseAsFlumeEvent);
             TopicPartition tp = new TopicPartition(record.topic(), record.partition());
 
-            // For MapR Streams we need to commit offset of record X (not X+1 as for Kafka)
-            // when we want to fetch a record X+1 for the next poll after rebalance.
-             long offset = isStreams ? record.offset() : record.offset() + 1;
-             OffsetAndMetadata oam = new OffsetAndMetadata(offset, batchUUID);            consumerAndRecords.get().saveOffsets(tp,oam);
+             OffsetAndMetadata oam = new OffsetAndMetadata(record.offset() + 1, batchUUID);
+             consumerAndRecords.get().saveOffsets(tp,oam);
 
             //Add the key to the header
             if (record.key() != null) {

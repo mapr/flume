@@ -48,7 +48,7 @@ limitations under the License.
 
     <avro.version>1.7.4</avro.version>
     <elasticsearch.version>0.90.1</elasticsearch.version>
-    <hadoop2.version>2.4.0</hadoop2.version>
+    <hadoop2.version>2.7.0-mapr-1607</hadoop2.version>
     <thrift.version>0.7.0</thrift.version>
     <kafka.version>0.9.0.1</kafka.version>
     <kite.version>1.0.0</kite.version>
@@ -224,7 +224,7 @@ limitations under the License.
       </activation>
       <properties>
         <hadoop.version>${hadoop2.version}</hadoop.version>
-        <hbase.version>1.0.0</hbase.version>
+        <hbase.version>1.1.1-mapr-1602</hbase.version>
         <hadoop.common.artifact.id>hadoop-common</hadoop.common.artifact.id>
         <thrift.version>0.9.0</thrift.version>
       </properties>

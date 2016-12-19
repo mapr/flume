@@ -48,6 +48,8 @@ class KerberosAuthenticator implements FlumeAuthenticator {
   private static final Logger LOG = LoggerFactory
           .getLogger(KerberosAuthenticator.class);
 
+  private static final String MAPR_SECURITY_ENABLED = "mapr_sec_enabled";
+
   private volatile UserGroupInformation ugi;
   private volatile KerberosUser prevUser;
   private volatile PrivilegedExecutor privilegedExecutor;
@@ -138,9 +140,18 @@ class KerberosAuthenticator implements FlumeAuthenticator {
 
     // enable the kerberos mode of UGI, before doing anything else
     if (!UserGroupInformation.isSecurityEnabled()) {
-      Configuration conf = new Configuration(false);
-      conf.set(HADOOP_SECURITY_AUTHENTICATION, "kerberos");
-      UserGroupInformation.setConfiguration(conf);
+      boolean maprSaslEnabled = Boolean.parseBoolean(System.getProperty(MAPR_SECURITY_ENABLED, "false"));
+
+      if (maprSaslEnabled) {
+        Configuration conf = new Configuration();
+        conf.set(HADOOP_SECURITY_AUTHENTICATION, "custom");
+        UserGroupInformation.setConfiguration(conf);
+
+      } else { // kerberos security
+        Configuration conf = new Configuration(false);
+        conf.set(HADOOP_SECURITY_AUTHENTICATION, "kerberos");
+        UserGroupInformation.setConfiguration(conf);
+      }
     }
 
     // We are interested in currently logged in user with kerberos creds

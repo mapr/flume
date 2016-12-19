@@ -454,11 +454,11 @@ fi
 # find java
 if [ -z "${JAVA_HOME}" ] ; then
   for candidate in \
-    /usr/lib/jvm/java-6-sun \
-    /usr/lib/jvm/java-1.6.0-sun-1.6.0.* \
-    /usr/lib/j2sdk1.6-sun \
-    /usr/java/jdk1.6* \
-    /usr/java/jre1.6* \
+    /usr/lib/jvm/java-7-sun \
+    /usr/lib/jvm/java-1.7.0-sun-1.7.0.* \
+    /usr/lib/j2sdk1.7-sun \
+    /usr/java/jdk1.7* \
+    /usr/java/jre1.7* \
     /Library/Java/Home \
     /usr/java/default \
     /usr \

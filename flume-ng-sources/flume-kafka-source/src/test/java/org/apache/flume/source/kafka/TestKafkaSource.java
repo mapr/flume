@@ -147,7 +147,7 @@ public class TestKafkaSource {
     boolean success = false;
     for (int i = 0; i < 20; i++) {
       kafkaServer.produce(startupTopic, "", "record");
-      ConsumerRecords recs = consumer.poll(Duration.ofMillis(1000L));
+      ConsumerRecords recs = consumer.poll(Duration.ofMillis(1000L).toMillis());
       if (!recs.isEmpty()) {
         success = true;
         break;

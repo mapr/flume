@@ -162,14 +162,20 @@ public class KafkaSource extends AbstractPollableSource
 
   private class PatternSubscriber extends Subscriber<Pattern> {
     private Pattern pattern;
+    private String regex;
 
     public PatternSubscriber(String regex) {
+      this.regex = regex;
       this.pattern = Pattern.compile(regex);
     }
 
     @Override
     public void subscribe(KafkaConsumer<?, ?> consumer, SourceRebalanceListener listener) {
       consumer.subscribe(pattern, listener);
+    }
+
+    public String getRegex(){
+      return regex;
     }
 
     @Override
@@ -370,25 +376,29 @@ public class KafkaSource extends AbstractPollableSource
     migrateZookeeperOffsets = context.getBoolean(MIGRATE_ZOOKEEPER_OFFSETS,
         DEFAULT_MIGRATE_ZOOKEEPER_OFFSETS);
 
-    bootstrapServers = context.getString(KafkaSourceConstants.BOOTSTRAP_SERVERS);
-    if (bootstrapServers == null || bootstrapServers.isEmpty()) {
-      if (zookeeperConnect == null || zookeeperConnect.isEmpty()) {
-        throw new ConfigurationException("Bootstrap Servers must be specified");
-      } else {
-        // For backwards compatibility look up the bootstrap from zookeeper
-        log.warn("{} is deprecated. Please use the parameter {}",
-            KafkaSourceConstants.ZOOKEEPER_CONNECT_FLUME_KEY,
-            KafkaSourceConstants.BOOTSTRAP_SERVERS);
+    // if not a mapr-streams
+    if (!isStreams(subscriber)) {
 
-        // Lookup configured security protocol, just in case its not default
-        String securityProtocolStr =
-            context.getSubProperties(KafkaSourceConstants.KAFKA_CONSUMER_PREFIX)
-                .get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG);
-        if (securityProtocolStr == null || securityProtocolStr.isEmpty()) {
-          securityProtocolStr = CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL;
+      bootstrapServers = context.getString(KafkaSourceConstants.BOOTSTRAP_SERVERS);
+      if (bootstrapServers == null || bootstrapServers.isEmpty()) {
+        if (zookeeperConnect == null || zookeeperConnect.isEmpty()) {
+          throw new ConfigurationException("Bootstrap Servers must be specified");
+        } else {
+          // For backwards compatibility look up the bootstrap from zookeeper
+          log.warn("{} is deprecated. Please use the parameter {}",
+                  KafkaSourceConstants.ZOOKEEPER_CONNECT_FLUME_KEY,
+                  KafkaSourceConstants.BOOTSTRAP_SERVERS);
+
+          // Lookup configured security protocol, just in case its not default
+          String securityProtocolStr =
+                  context.getSubProperties(KafkaSourceConstants.KAFKA_CONSUMER_PREFIX)
+                          .get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG);
+          if (securityProtocolStr == null || securityProtocolStr.isEmpty()) {
+            securityProtocolStr = CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL;
+          }
+          bootstrapServers =
+                  lookupBootstrap(zookeeperConnect, SecurityProtocol.valueOf(securityProtocolStr));
         }
-        bootstrapServers =
-            lookupBootstrap(zookeeperConnect, SecurityProtocol.valueOf(securityProtocolStr));
       }
     }
 
@@ -420,6 +430,19 @@ public class KafkaSource extends AbstractPollableSource
     }
   }
 
+  private boolean isStreams(Subscriber subscriber){
+    if (subscriber instanceof TopicListSubscriber){
+      for (String topics : ((TopicListSubscriber) subscriber).get()){
+        if (!topics.startsWith("/")){
+          return false;
+        }
+      }
+      return true;
+    } else {
+      return ((PatternSubscriber) subscriber).getRegex().startsWith("/");
+    }
+  }
+
   // We can remove this once the properties are officially deprecated
   private void translateOldProperties(Context ctx) {
     // topic
@@ -448,7 +471,10 @@ public class KafkaSource extends AbstractPollableSource
     //Defaults overridden based on config
     kafkaProps.putAll(ctx.getSubProperties(KafkaSourceConstants.KAFKA_CONSUMER_PREFIX));
     //These always take precedence over config
-    kafkaProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    if (bootstrapServers != null){
+      kafkaProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    }
+
     if (groupId != null) {
       kafkaProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
     }

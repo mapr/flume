@@ -184,9 +184,13 @@ public class KafkaChannel extends BasicChannelSemantics {
       logger.info("Group ID was not specified. Using {} as the group id.", groupId);
     }
 
-    String bootStrapServers = ctx.getString(BOOTSTRAP_SERVERS_CONFIG);
-    if (bootStrapServers == null || bootStrapServers.isEmpty()) {
-      throw new ConfigurationException("Bootstrap Servers must be specified");
+    String bootStrapServers = null;
+
+    if (!isStreams(topicStr)){
+      bootStrapServers = ctx.getString(BOOTSTRAP_SERVERS_CONFIG);
+      if (bootStrapServers == null || bootStrapServers.isEmpty()) {
+        throw new ConfigurationException("Bootstrap Servers must be specified");
+      }
     }
 
     setProducerProps(ctx, bootStrapServers);
@@ -219,17 +223,19 @@ public class KafkaChannel extends BasicChannelSemantics {
       logger.warn("{} is deprecated. Please use the parameter {}", "topic", TOPIC_CONFIG);
     }
 
-    // Broker List
-    // If there is no value we need to check and set the old param and log a warning message
-    if (!(ctx.containsKey(BOOTSTRAP_SERVERS_CONFIG))) {
-      String brokerList = ctx.getString(BROKER_LIST_FLUME_KEY);
-      if (brokerList == null || brokerList.isEmpty()) {
-        throw new ConfigurationException("Bootstrap Servers must be specified");
-      } else {
-        ctx.put(BOOTSTRAP_SERVERS_CONFIG, brokerList);
+    if (!isStreams(ctx.getString(TOPIC_CONFIG))) {
+      // Broker List
+      // If there is no value we need to check and set the old param and log a warning message
+      if (!(ctx.containsKey(BOOTSTRAP_SERVERS_CONFIG))) {
+        String brokerList = ctx.getString(BROKER_LIST_FLUME_KEY);
+        if (brokerList == null || brokerList.isEmpty()) {
+          throw new ConfigurationException("Bootstrap Servers must be specified");
+        } else {
+           ctx.put(BOOTSTRAP_SERVERS_CONFIG, brokerList);
+        }
         logger.warn("{} is deprecated. Please use the parameter {}",
-                    BROKER_LIST_FLUME_KEY, BOOTSTRAP_SERVERS_CONFIG);
-      }
+                BROKER_LIST_FLUME_KEY, BOOTSTRAP_SERVERS_CONFIG);
+        }
     }
 
     // GroupId
@@ -272,7 +278,9 @@ public class KafkaChannel extends BasicChannelSemantics {
     producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, DEFAULT_VALUE_SERIAIZER);
     // Defaults overridden based on config
     producerProps.putAll(ctx.getSubProperties(KAFKA_PRODUCER_PREFIX));
-    producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+    if (bootStrapServers != null) {
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+    }
   }
 
   protected Properties getProducerProps() {
@@ -287,7 +295,9 @@ public class KafkaChannel extends BasicChannelSemantics {
     // Defaults overridden based on config
     consumerProps.putAll(ctx.getSubProperties(KAFKA_CONSUMER_PREFIX));
     // These always take precedence over config
-    consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+    if (bootStrapServers != null) {
+      consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+    }
     consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
     consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
   }

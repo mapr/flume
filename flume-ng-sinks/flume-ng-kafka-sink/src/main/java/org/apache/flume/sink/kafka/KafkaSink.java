@@ -322,9 +322,13 @@ public class KafkaSink extends AbstractSink implements Configurable {
 
     kafkaFutures = new LinkedList<Future<RecordMetadata>>();
 
-    String bootStrapServers = context.getString(BOOTSTRAP_SERVERS_CONFIG);
-    if (bootStrapServers == null || bootStrapServers.isEmpty()) {
-      throw new ConfigurationException("Bootstrap Servers must be specified");
+    String bootStrapServers = null;
+
+    if (!isStreams(topicStr)){
+      bootStrapServers = context.getString(BOOTSTRAP_SERVERS_CONFIG);
+      if (bootStrapServers == null || bootStrapServers.isEmpty()) {
+        throw new ConfigurationException("Bootstrap Servers must be specified");
+      }
     }
 
     setProducerProps(context, bootStrapServers);
@@ -345,16 +349,18 @@ public class KafkaSink extends AbstractSink implements Configurable {
       logger.warn("{} is deprecated. Please use the parameter {}", "topic", TOPIC_CONFIG);
     }
 
-    //Broker List
-    // If there is no value we need to check and set the old param and log a warning message
-    if (!(ctx.containsKey(BOOTSTRAP_SERVERS_CONFIG))) {
-      String brokerList = ctx.getString(BROKER_LIST_FLUME_KEY);
-      if (brokerList == null || brokerList.isEmpty()) {
-        throw new ConfigurationException("Bootstrap Servers must be specified");
-      } else {
-        ctx.put(BOOTSTRAP_SERVERS_CONFIG, brokerList);
-        logger.warn("{} is deprecated. Please use the parameter {}",
-                    BROKER_LIST_FLUME_KEY, BOOTSTRAP_SERVERS_CONFIG);
+    if (!isStreams(ctx.getString(TOPIC_CONFIG))) {
+      //Broker List
+      // If there is no value we need to check and set the old param and log a warning message
+      if (!(ctx.containsKey(BOOTSTRAP_SERVERS_CONFIG))) {
+        String brokerList = ctx.getString(BROKER_LIST_FLUME_KEY);
+        if (brokerList == null || brokerList.isEmpty()) {
+          throw new ConfigurationException("Bootstrap Servers must be specified");
+        } else {
+          ctx.put(BOOTSTRAP_SERVERS_CONFIG, brokerList);
+          logger.warn("{} is deprecated. Please use the parameter {}",
+                  BROKER_LIST_FLUME_KEY, BOOTSTRAP_SERVERS_CONFIG);
+        }
       }
     }
 
@@ -392,13 +398,19 @@ public class KafkaSink extends AbstractSink implements Configurable {
     }
   }
 
+  private boolean isStreams(String topic) {
+    return topic.startsWith("/");
+  }
+
   private void setProducerProps(Context context, String bootStrapServers) {
     kafkaProps.put(ProducerConfig.ACKS_CONFIG, DEFAULT_ACKS);
     //Defaults overridden based on config
     kafkaProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, DEFAULT_KEY_SERIALIZER);
     kafkaProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, DEFAULT_VALUE_SERIAIZER);
     kafkaProps.putAll(context.getSubProperties(KAFKA_PRODUCER_PREFIX));
-    kafkaProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+    if (bootStrapServers != null) {
+      kafkaProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+    }
   }
 
   protected Properties getKafkaProps() {

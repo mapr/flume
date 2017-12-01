@@ -140,7 +140,8 @@ class KerberosAuthenticator implements FlumeAuthenticator {
 
     // enable the kerberos mode of UGI, before doing anything else
     if (!UserGroupInformation.isSecurityEnabled()) {
-      boolean maprSaslEnabled = Boolean.parseBoolean(System.getProperty(MAPR_SECURITY_ENABLED, "false"));
+      boolean maprSaslEnabled = Boolean.parseBoolean(
+                  System.getProperty(MAPR_SECURITY_ENABLED, "false"));
 
       if (maprSaslEnabled) {
         Configuration conf = new Configuration();

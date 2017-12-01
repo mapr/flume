@@ -186,7 +186,7 @@ public class KafkaChannel extends BasicChannelSemantics {
 
     String bootStrapServers = null;
 
-    if (!isStreams(topicStr)){
+    if (!isStreams(topicStr)) {
       bootStrapServers = ctx.getString(BOOTSTRAP_SERVERS_CONFIG);
       if (bootStrapServers == null || bootStrapServers.isEmpty()) {
         throw new ConfigurationException("Bootstrap Servers must be specified");
@@ -231,11 +231,11 @@ public class KafkaChannel extends BasicChannelSemantics {
         if (brokerList == null || brokerList.isEmpty()) {
           throw new ConfigurationException("Bootstrap Servers must be specified");
         } else {
-           ctx.put(BOOTSTRAP_SERVERS_CONFIG, brokerList);
+          ctx.put(BOOTSTRAP_SERVERS_CONFIG, brokerList);
         }
         logger.warn("{} is deprecated. Please use the parameter {}",
                 BROKER_LIST_FLUME_KEY, BOOTSTRAP_SERVERS_CONFIG);
-        }
+      }
     }
 
     // GroupId
@@ -279,7 +279,7 @@ public class KafkaChannel extends BasicChannelSemantics {
     // Defaults overridden based on config
     producerProps.putAll(ctx.getSubProperties(KAFKA_PRODUCER_PREFIX));
     if (bootStrapServers != null) {
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
+      producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
     }
   }
 
@@ -512,8 +512,8 @@ public class KafkaChannel extends BasicChannelSemantics {
             e = deserializeValue(record.value(), parseAsFlumeEvent);
             TopicPartition tp = new TopicPartition(record.topic(), record.partition());
 
-             OffsetAndMetadata oam = new OffsetAndMetadata(record.offset() + 1, batchUUID);
-             consumerAndRecords.get().saveOffsets(tp,oam);
+            OffsetAndMetadata oam = new OffsetAndMetadata(record.offset() + 1, batchUUID);
+            consumerAndRecords.get().saveOffsets(tp,oam);
 
             //Add the key to the header
             if (record.key() != null) {
@@ -735,17 +735,17 @@ public class KafkaChannel extends BasicChannelSemantics {
       StringBuilder sb = new StringBuilder();
       sb.append(getName()).append(" committed: ");
       for (TopicPartition tp : consumer.assignment()) {
-          try {
-              sb.append("[").append(tp).append(",")
-                      .append(consumer.committed(tp).offset())
-                      .append("] ");
-          } catch (NullPointerException npe) {
-              logger.debug("Committed {}", tp);
-          } catch (UnknownTopicOrPartitionException e) {
-              if (logger.isDebugEnabled()) {
-                  logger.debug("Committed {}", tp);
-              }
+        try {
+          sb.append("[").append(tp).append(",")
+                  .append(consumer.committed(tp).offset())
+                  .append("] ");
+        } catch (NullPointerException npe) {
+          logger.debug("Committed {}", tp);
+        } catch (UnknownTopicOrPartitionException e) {
+          if (logger.isDebugEnabled()) {
+            logger.debug("Committed {}", tp);
           }
+        }
       }
       return sb.toString();
     }

@@ -342,7 +342,7 @@ public class KafkaSink extends AbstractSink implements Configurable {
 
     String bootStrapServers = null;
 
-    if (!isStreams(topicStr)){
+    if (!isStreams(topicStr)) {
       bootStrapServers = context.getString(BOOTSTRAP_SERVERS_CONFIG);
       if (bootStrapServers == null || bootStrapServers.isEmpty()) {
         throw new ConfigurationException("Bootstrap Servers must be specified");

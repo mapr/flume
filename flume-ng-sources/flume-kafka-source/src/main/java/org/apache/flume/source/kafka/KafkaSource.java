@@ -187,7 +187,7 @@ public class KafkaSource extends AbstractPollableSource
       consumer.subscribe(pattern, listener);
     }
 
-    public String getRegex(){
+    public String getRegex() {
       return regex;
     }
 
@@ -444,10 +444,10 @@ public class KafkaSource extends AbstractPollableSource
     }
   }
 
-  private boolean isStreams(Subscriber subscriber){
-    if (subscriber instanceof TopicListSubscriber){
-      for (String topics : ((TopicListSubscriber) subscriber).get()){
-        if (!topics.startsWith("/")){
+  private boolean isStreams(Subscriber subscriber) {
+    if (subscriber instanceof TopicListSubscriber) {
+      for (String topics : ((TopicListSubscriber) subscriber).get()) {
+        if (!topics.startsWith("/")) {
           return false;
         }
       }
@@ -485,7 +485,7 @@ public class KafkaSource extends AbstractPollableSource
     //Defaults overridden based on config
     kafkaProps.putAll(ctx.getSubProperties(KafkaSourceConstants.KAFKA_CONSUMER_PREFIX));
     //These always take precedence over config
-    if (bootstrapServers != null){
+    if (bootstrapServers != null) {
       kafkaProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     }
 

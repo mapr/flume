@@ -132,9 +132,9 @@ public class HiveSink extends AbstractSink implements Configurable, BatchSizeSup
     String oldKerberosKeytab = kerberosKeytab;
     kerberosKeytab = context.getString("hive.kerberosKeytab", null);
 
-    if(kerberosKeytab==null && kerberosPrincipal==null) {
+    if (kerberosKeytab == null && kerberosPrincipal == null) {
       kerberosEnabled = false;
-    } else if ( kerberosPrincipal!=null && kerberosKeytab!=null ) {
+    } else if ( kerberosPrincipal != null && kerberosKeytab != null ) {
       kerberosEnabled = true;
     } else {
       throw new IllegalArgumentException("To enable Kerberos, need to set both " +
@@ -142,9 +142,9 @@ public class HiveSink extends AbstractSink implements Configurable, BatchSizeSup
               + getName());
     }
 
-    boolean needReauth = hasCredentialChanged(oldKerberosKeytab, oldKerberosPrincipal
-            , kerberosKeytab, kerberosPrincipal);
-    if( needReauth ) {
+    boolean needReauth = hasCredentialChanged(oldKerberosKeytab, oldKerberosPrincipal,
+            kerberosKeytab, kerberosPrincipal);
+    if (needReauth) {
       if (kerberosEnabled) {
         try {
           ugi = authenticate(kerberosKeytab, kerberosPrincipal);
@@ -259,28 +259,30 @@ public class HiveSink extends AbstractSink implements Configurable, BatchSizeSup
   private static boolean hasCredentialChanged(String oldKerberosKeytab, String oldKerberosPrincipal,
                                             String newKerberosKeytab, String newKerberosPrincipal) {
     // see of keytab changed
-    if ( hasChanged(oldKerberosKeytab, newKerberosKeytab) )
+    if ( hasChanged(oldKerberosKeytab, newKerberosKeytab) ) {
       return true;
+    }
 
     // see of principal changed
-    if ( hasChanged(oldKerberosPrincipal, newKerberosPrincipal) )
+    if ( hasChanged(oldKerberosPrincipal, newKerberosPrincipal) ) {
       return true;
+    }
 
-      return false;
+    return false;
   }
 
   private static boolean hasChanged(String oldVal, String newVal) {
-    if( oldVal == null) {
-       if ( newVal != null ) {
-         return true;
-       }
+    if (oldVal == null) {
+      if (newVal != null) {
+        return true;
+      }
       return false;
     } else {
       if (newVal == null) {
         return true;
       }
     }
-    if( oldVal.compareTo(newVal) != 0) {
+    if (oldVal.compareTo(newVal) != 0) {
       return true;
     }
     return false;
@@ -344,6 +346,7 @@ public class HiveSink extends AbstractSink implements Configurable, BatchSizeSup
    * Take at most batchSize events per Transaction. <br/>
    * This method is not thread safe.
    */
+
   public Status process() throws EventDeliveryException {
     // writers used in this Txn
 

@@ -180,7 +180,7 @@ public class TestUtil {
   }
 
   public ConsumerRecords<String, String> getNextMessageFromConsumer(String topic) {
-    return consumer.poll(Duration.ofMillis(1000L));
+    return consumer.poll(Duration.ofMillis(1000L).toMillis());
   }
 
   public void prepare() {

@@ -74,6 +74,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.security.PrivilegedAction;
+import com.mapr.web.security.SslConfig;
+import com.mapr.web.security.WebSecurityManager;
+import com.mapr.web.security.SslConfig.SslConfigScope;
 
 public class ThriftSource extends AbstractSource implements Configurable, EventDrivenSource {
 
@@ -108,6 +111,7 @@ public class ThriftSource extends AbstractSource implements Configurable, EventD
   private static final String KERBEROS_KEY = "kerberos";
   private static final String AGENT_PRINCIPAL = "agent-principal";
   private static final String AGENT_KEYTAB = "agent-keytab";
+  private static final String MAPR_SECURITY_ENABLED = "mapr_sec_enabled";
 
   private Integer port;
   private String bindAddress;
@@ -157,31 +161,22 @@ public class ThriftSource extends AbstractSource implements Configurable, EventD
                 protocol.equalsIgnoreCase(COMPACT_PROTOCOL)),
         "binary or compact are the only valid Thrift protocol types to " +
                 "choose from.");
-
-    enableSsl = context.getBoolean(SSL_KEY, false);
-    if (enableSsl) {
-      keystore = context.getString(KEYSTORE_KEY);
-      keystorePassword = context.getString(KEYSTORE_PASSWORD_KEY);
-      keystoreType = context.getString(KEYSTORE_TYPE_KEY, "JKS");
-      String excludeProtocolsStr = context.getString(EXCLUDE_PROTOCOLS);
-      if (excludeProtocolsStr == null) {
-        excludeProtocols.add("SSLv3");
-      } else {
-        excludeProtocols.addAll(Arrays.asList(excludeProtocolsStr.split(" ")));
-        if (!excludeProtocols.contains("SSLv3")) {
-          excludeProtocols.add("SSLv3");
-        }
-      }
-      Preconditions.checkNotNull(keystore,
-              KEYSTORE_KEY + " must be specified when SSL is enabled");
-      Preconditions.checkNotNull(keystorePassword,
-              KEYSTORE_PASSWORD_KEY + " must be specified when SSL is enabled");
-      try {
-        KeyStore ks = KeyStore.getInstance(keystoreType);
-        ks.load(new FileInputStream(keystore), keystorePassword.toCharArray());
-      } catch (Exception ex) {
-        throw new FlumeException(
-                "Thrift source configured with invalid keystore: " + keystore, ex);
+    boolean maprSaslEnabled = Boolean.parseBoolean(System.getProperty(MAPR_SECURITY_ENABLED,
+            "false"));
+    if (context.getBoolean(SSL_KEY) == null && maprSaslEnabled) {
+      enableSsl = true;
+      SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfigScope.SCOPE_CLIENT_ONLY);
+      keystore = sslConfig.getClientKeystoreLocation();
+      keystorePassword = new String(sslConfig.getClientKeystorePassword());
+      keystoreType = sslConfig.getClientKeystoreType().toUpperCase();
+      excludeProtocolsAndLoadKeyStore(context);
+    } else {
+      enableSsl = context.getBoolean(SSL_KEY, false);
+      if (enableSsl) {
+        keystore = context.getString(KEYSTORE_KEY);
+        keystorePassword = context.getString(KEYSTORE_PASSWORD_KEY);
+        keystoreType = context.getString(KEYSTORE_TYPE_KEY, "JKS");
+        excludeProtocolsAndLoadKeyStore(context);
       }
     }
 
@@ -195,6 +190,29 @@ public class ThriftSource extends AbstractSource implements Configurable, EventD
                 "principal " + principal + " keytab " + keytab);
       }
       flumeAuth.startCredentialRefresher();
+    }
+  }
+
+  public void excludeProtocolsAndLoadKeyStore(Context context) {
+    String excludeProtocolsStr = context.getString(EXCLUDE_PROTOCOLS);
+    if (excludeProtocolsStr == null) {
+      excludeProtocols.add("SSLv3");
+    } else {
+      excludeProtocols.addAll(Arrays.asList(excludeProtocolsStr.split(" ")));
+      if (!excludeProtocols.contains("SSLv3")) {
+        excludeProtocols.add("SSLv3");
+      }
+    }
+    Preconditions.checkNotNull(keystore,
+            KEYSTORE_KEY + " must be specified when SSL is enabled");
+    Preconditions.checkNotNull(keystorePassword,
+            KEYSTORE_PASSWORD_KEY + " must be specified when SSL is enabled");
+    try {
+      KeyStore ks = KeyStore.getInstance(keystoreType);
+      ks.load(new FileInputStream(keystore), keystorePassword.toCharArray());
+    } catch (Exception ex) {
+      throw new FlumeException(
+              "Thrift source configured with invalid keystore: " + keystore, ex);
     }
   }
 

@@ -31,6 +31,9 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.mapr.web.security.SslConfig;
+import com.mapr.web.security.WebSecurityManager;
+import com.mapr.web.security.SslConfig.SslConfigScope;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
@@ -71,6 +74,7 @@ public class ThriftRpcClient extends AbstractRpcClient {
   public static final String CONFIG_PROTOCOL = "protocol";
   public static final String BINARY_PROTOCOL = "binary";
   public static final String COMPACT_PROTOCOL = "compact";
+  private static final String MAPR_SECURITY_ENABLED = "mapr_sec_enabled";
 
   private int batchSize;
   private long requestTimeout;
@@ -323,24 +327,27 @@ public class ThriftRpcClient extends AbstractRpcClient {
             .DEFAULT_CONNECTION_POOL_SIZE;
       }
 
-      enableSsl = Boolean.parseBoolean(properties.getProperty(
-          RpcClientConfigurationConstants.CONFIG_SSL));
-      if (enableSsl) {
-        truststore = properties.getProperty(
-            RpcClientConfigurationConstants.CONFIG_TRUSTSTORE);
-        truststorePassword = properties.getProperty(
-            RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_PASSWORD);
-        truststoreType = properties.getProperty(
-            RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_TYPE, "JKS");
-        String excludeProtocolsStr = properties.getProperty(
-            RpcClientConfigurationConstants.CONFIG_EXCLUDE_PROTOCOLS);
-        if (excludeProtocolsStr == null) {
-          excludeProtocols.add("SSLv3");
-        } else {
-          excludeProtocols.addAll(Arrays.asList(excludeProtocolsStr.split(" ")));
-          if (!excludeProtocols.contains("SSLv3")) {
-            excludeProtocols.add("SSLv3");
-          }
+      boolean maprSaslEnabled = Boolean.parseBoolean(System.getProperty(MAPR_SECURITY_ENABLED,
+              "false"));
+      if (properties.getProperty(RpcClientConfigurationConstants.CONFIG_SSL) == null
+              && maprSaslEnabled) {
+        enableSsl = true;
+        SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfigScope.SCOPE_CLIENT_ONLY);
+        truststore = sslConfig.getClientTruststoreLocation();
+        truststorePassword = new String(sslConfig.getClientTruststorePassword());
+        truststoreType = sslConfig.getClientTruststoreType().toUpperCase();
+        excludeProtocols(properties);
+      } else {
+        enableSsl = Boolean.parseBoolean(properties.getProperty(
+                RpcClientConfigurationConstants.CONFIG_SSL));
+        if (enableSsl) {
+          truststore = properties.getProperty(
+                  RpcClientConfigurationConstants.CONFIG_TRUSTSTORE);
+          truststorePassword = properties.getProperty(
+                  RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_PASSWORD);
+          truststoreType = properties.getProperty(
+                  RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_TYPE, "JKS");
+          excludeProtocols(properties);
         }
       }
 
@@ -357,6 +364,19 @@ public class ThriftRpcClient extends AbstractRpcClient {
       throw new FlumeException("Error while configuring RpcClient. ", ex);
     } finally {
       stateLock.unlock();
+    }
+  }
+
+  protected void excludeProtocols(Properties properties) {
+    String excludeProtocolsStr = properties.getProperty(
+            RpcClientConfigurationConstants.CONFIG_EXCLUDE_PROTOCOLS);
+    if (excludeProtocolsStr == null) {
+      excludeProtocols.add("SSLv3");
+    } else {
+      excludeProtocols.addAll(Arrays.asList(excludeProtocolsStr.split(" ")));
+      if (!excludeProtocols.contains("SSLv3")) {
+        excludeProtocols.add("SSLv3");
+      }
     }
   }
 

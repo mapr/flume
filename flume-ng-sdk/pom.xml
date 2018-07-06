@@ -229,5 +229,10 @@ limitations under the License.
       <artifactId>libthrift</artifactId>
     </dependency>
 
+    <dependency>
+      <groupId>com.mapr.security</groupId>
+      <artifactId>mapr-security-web</artifactId>
+    </dependency>
+
   </dependencies>
 </project>

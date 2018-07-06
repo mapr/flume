@@ -382,6 +382,11 @@ limitations under the License.
       <artifactId>mina-core</artifactId>
     </dependency>
 
+    <dependency>
+      <groupId>com.mapr.security</groupId>
+      <artifactId>mapr-security-web</artifactId>
+    </dependency>
+
   </dependencies>
 
 </project>

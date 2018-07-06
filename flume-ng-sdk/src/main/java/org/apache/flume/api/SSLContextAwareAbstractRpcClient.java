@@ -26,6 +26,9 @@ import java.util.Set;
 
 import org.apache.flume.FlumeException;
 import org.apache.flume.util.SSLUtil;
+import com.mapr.web.security.SslConfig;
+import com.mapr.web.security.WebSecurityManager;
+import com.mapr.web.security.SslConfig.SslConfigScope;
 
 public abstract class SSLContextAwareAbstractRpcClient extends AbstractRpcClient {
   protected boolean enableSsl;
@@ -37,8 +40,36 @@ public abstract class SSLContextAwareAbstractRpcClient extends AbstractRpcClient
   protected final Set<String> includeProtocols = new LinkedHashSet<>();
   protected final Set<String> excludeCipherSuites = new LinkedHashSet<>();
   protected final Set<String> includeCipherSuites = new LinkedHashSet<>();
+  private static final String MAPR_SECURITY_ENABLED = "mapr_sec_enabled";
 
   protected void configureSSL(Properties properties) throws FlumeException {
+    boolean maprSaslEnabled = Boolean.parseBoolean(System.getProperty(MAPR_SECURITY_ENABLED,
+            "false"));
+    if (properties.getProperty(RpcClientConfigurationConstants.CONFIG_SSL) == null
+            && maprSaslEnabled) {
+      enableSsl = true;
+      SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfigScope.SCOPE_CLIENT_ONLY);
+      //to check
+      trustAllCerts = true;
+      truststore = sslConfig.getClientTruststoreLocation();
+      truststorePassword = new String(sslConfig.getClientTruststorePassword());
+      truststoreType = sslConfig.getClientTruststoreType().toUpperCase();
+      excludeProtocols(properties);
+    } else {
+      enableSsl = Boolean.parseBoolean(properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_SSL));
+      trustAllCerts = Boolean.parseBoolean(properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_TRUST_ALL_CERTS));
+      truststore = properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_TRUSTSTORE, SSLUtil.getGlobalTruststorePath());
+      truststorePassword = properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_PASSWORD,
+              SSLUtil.getGlobalTruststorePassword());
+      truststoreType = properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_TYPE,
+              SSLUtil.getGlobalTruststoreType("JKS"));
+      excludeProtocols(properties);
+    }
     enableSsl = Boolean.parseBoolean(properties.getProperty(
       RpcClientConfigurationConstants.CONFIG_SSL));
     trustAllCerts = Boolean.parseBoolean(properties.getProperty(
@@ -67,6 +98,25 @@ public abstract class SSLContextAwareAbstractRpcClient extends AbstractRpcClient
         RpcClientConfigurationConstants.CONFIG_INCLUDE_CIPHER_SUITES,
         SSLUtil.getGlobalIncludeCipherSuites()),
         includeCipherSuites);
+  }
+
+  private void excludeProtocols(Properties properties) {
+    parseList(properties.getProperty(
+            RpcClientConfigurationConstants.CONFIG_EXCLUDE_PROTOCOLS,
+            SSLUtil.getGlobalExcludeProtocols()),
+            excludeProtocols);
+    parseList(properties.getProperty(
+            RpcClientConfigurationConstants.CONFIG_INCLUDE_PROTOCOLS,
+            SSLUtil.getGlobalIncludeProtocols()),
+            includeProtocols);
+    parseList(properties.getProperty(
+            RpcClientConfigurationConstants.CONFIG_EXCLUDE_CIPHER_SUITES,
+            SSLUtil.getGlobalExcludeCipherSuites()),
+            excludeCipherSuites);
+    parseList(properties.getProperty(
+            RpcClientConfigurationConstants.CONFIG_INCLUDE_CIPHER_SUITES,
+            SSLUtil.getGlobalIncludeCipherSuites()),
+            includeCipherSuites);
   }
 
   private void parseList(String value, Set<String> set) {

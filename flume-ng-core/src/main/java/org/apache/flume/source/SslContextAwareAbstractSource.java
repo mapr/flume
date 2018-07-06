@@ -36,6 +36,10 @@ import org.apache.flume.Context;
 import org.apache.flume.FlumeException;
 import org.apache.flume.util.SSLUtil;
 
+import com.mapr.web.security.SslConfig;
+import com.mapr.web.security.WebSecurityManager;
+import com.mapr.web.security.SslConfig.SslConfigScope;
+
 public abstract class SslContextAwareAbstractSource extends AbstractSource {
   private static final String SSL_ENABLED_KEY = "ssl";
   private static final boolean SSL_ENABLED_DEFAULT_VALUE = false;
@@ -46,6 +50,8 @@ public abstract class SslContextAwareAbstractSource extends AbstractSource {
 
   private static final String EXCLUDE_PROTOCOLS = "exclude-protocols";
   private static final String INCLUDE_PROTOCOLS = "include-protocols";
+
+  private static final String MAPR_SECURITY_ENABLED = "mapr_sec_enabled";
 
   private static final String EXCLUDE_CIPHER_SUITES = "exclude-cipher-suites";
   private static final String INCLUDE_CIPHER_SUITES = "include-cipher-suites";
@@ -93,33 +99,47 @@ public abstract class SslContextAwareAbstractSource extends AbstractSource {
   }
 
   protected void configureSsl(Context context) {
-    sslEnabled = context.getBoolean(SSL_ENABLED_KEY, SSL_ENABLED_DEFAULT_VALUE);
-    keystore = context.getString(KEYSTORE_KEY, SSLUtil.getGlobalKeystorePath());
-    keystorePassword = context.getString(
-        KEYSTORE_PASSWORD_KEY, SSLUtil.getGlobalKeystorePassword());
-    keystoreType = context.getString(
-        KEYSTORE_TYPE_KEY, SSLUtil.getGlobalKeystoreType(KEYSTORE_TYPE_DEFAULT_VALUE));
+    boolean maprSaslEnabled = Boolean.parseBoolean(System.getProperty(MAPR_SECURITY_ENABLED,
+            "false"));
+    if (context.getBoolean(SSL_ENABLED_KEY) == null && maprSaslEnabled) {
+      sslEnabled = true;
+      SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfigScope.SCOPE_CLIENT_ONLY);
+      keystore = sslConfig.getClientKeystoreLocation();
+      keystorePassword = new String(sslConfig.getClientKeystorePassword());
+      keystoreType = sslConfig.getClientKeystoreType().toUpperCase();
+      excludeProtocolsAndLoadKeyStore(sslEnabled, context);
+    } else {
+      sslEnabled = context.getBoolean(SSL_ENABLED_KEY, SSL_ENABLED_DEFAULT_VALUE);
+      keystore = context.getString(KEYSTORE_KEY, SSLUtil.getGlobalKeystorePath());
+      keystorePassword = context.getString(
+              KEYSTORE_PASSWORD_KEY, SSLUtil.getGlobalKeystorePassword());
+      keystoreType = context.getString(
+              KEYSTORE_TYPE_KEY, SSLUtil.getGlobalKeystoreType(KEYSTORE_TYPE_DEFAULT_VALUE));
+      excludeProtocolsAndLoadKeyStore(sslEnabled, context);
+    }
+  }
 
+  private void excludeProtocolsAndLoadKeyStore(boolean sslEnabled, Context context) {
     parseList(context.getString(EXCLUDE_PROTOCOLS, SSLUtil.getGlobalExcludeProtocols()),
-        excludeProtocols);
+            excludeProtocols);
     parseList(context.getString(INCLUDE_PROTOCOLS, SSLUtil.getGlobalIncludeProtocols()),
-        includeProtocols);
+            includeProtocols);
     parseList(context.getString(EXCLUDE_CIPHER_SUITES, SSLUtil.getGlobalExcludeCipherSuites()),
-        excludeCipherSuites);
+            excludeCipherSuites);
     parseList(context.getString(INCLUDE_CIPHER_SUITES, SSLUtil.getGlobalIncludeCipherSuites()),
-        includeCipherSuites);
+            includeCipherSuites);
 
     if (sslEnabled) {
       Objects.requireNonNull(keystore,
-          KEYSTORE_KEY + " must be specified when SSL is enabled");
+              KEYSTORE_KEY + " must be specified when SSL is enabled");
       Objects.requireNonNull(keystorePassword,
-          KEYSTORE_PASSWORD_KEY + " must be specified when SSL is enabled");
+              KEYSTORE_PASSWORD_KEY + " must be specified when SSL is enabled");
       try {
         KeyStore ks = KeyStore.getInstance(keystoreType);
         ks.load(new FileInputStream(keystore), keystorePassword.toCharArray());
       } catch (Exception ex) {
         throw new FlumeException(
-          "Source " + getName() + " configured with invalid keystore: " + keystore, ex);
+                "Source " + getName() + " configured with invalid keystore: " + keystore, ex);
       }
     }
   }

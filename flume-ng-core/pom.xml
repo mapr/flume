@@ -31,8 +31,8 @@ limitations under the License.
 
   <properties>
     <!-- TODO fix spotbugs violations -->
-    <spotbugs.maxAllowedViolations>115</spotbugs.maxAllowedViolations>
-    <pmd.maxAllowedViolations>112</pmd.maxAllowedViolations>
+    <spotbugs.maxAllowedViolations>118</spotbugs.maxAllowedViolations>
+    <pmd.maxAllowedViolations>115</pmd.maxAllowedViolations>
   </properties>
 
   <build>
@@ -394,6 +394,11 @@ limitations under the License.
     <dependency>
       <groupId>org.apache.mina</groupId>
       <artifactId>mina-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.mapr.security</groupId>
+      <artifactId>mapr-security-web</artifactId>
     </dependency>
 
   </dependencies>

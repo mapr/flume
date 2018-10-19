@@ -21,6 +21,9 @@ package org.apache.flume.source;
 
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.mapr.web.security.SslConfig;
+import com.mapr.web.security.WebSecurityManager;
+import com.mapr.web.security.SslConfig.SslConfigScope;
 import org.apache.avro.ipc.NettyServer;
 import org.apache.avro.ipc.NettyTransceiver;
 import org.apache.avro.ipc.Responder;
@@ -154,6 +157,7 @@ public class AvroSource extends AbstractSource implements EventDrivenSource,
   private boolean enableSsl = false;
   private boolean enableIpFilter;
   private String patternRuleConfigDefinition;
+  private static final String MAPR_SECURITY_ENABLED = "mapr_sec_enabled";
 
   private NioServerSocketChannelFactory socketChannelFactory;
   private Server server;
@@ -179,31 +183,22 @@ public class AvroSource extends AbstractSource implements EventDrivenSource,
               context.getString(THREADS));
     }
 
-    enableSsl = context.getBoolean(SSL_KEY, false);
-    keystore = context.getString(KEYSTORE_KEY);
-    keystorePassword = context.getString(KEYSTORE_PASSWORD_KEY);
-    keystoreType = context.getString(KEYSTORE_TYPE_KEY, "JKS");
-    String excludeProtocolsStr = context.getString(EXCLUDE_PROTOCOLS);
-    if (excludeProtocolsStr == null) {
-      excludeProtocols.add("SSLv3");
+    boolean maprSaslEnabled = Boolean.parseBoolean(System.getProperty(MAPR_SECURITY_ENABLED,
+            "false"));
+    if (context.getBoolean(SSL_KEY) == null && maprSaslEnabled) {
+      enableSsl = true;
+      SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfigScope.SCOPE_CLIENT_ONLY);
+      keystore = sslConfig.getClientKeystoreLocation();
+      keystorePassword = new String(sslConfig.getClientKeystorePassword());
+      keystoreType = sslConfig.getClientKeystoreType().toUpperCase();
+      excludeProtocolsAndLoadKeyStore(context);
     } else {
-      excludeProtocols.addAll(Arrays.asList(excludeProtocolsStr.split(" ")));
-      if (!excludeProtocols.contains("SSLv3")) {
-        excludeProtocols.add("SSLv3");
-      }
-    }
-
-    if (enableSsl) {
-      Preconditions.checkNotNull(keystore,
-          KEYSTORE_KEY + " must be specified when SSL is enabled");
-      Preconditions.checkNotNull(keystorePassword,
-          KEYSTORE_PASSWORD_KEY + " must be specified when SSL is enabled");
-      try {
-        KeyStore ks = KeyStore.getInstance(keystoreType);
-        ks.load(new FileInputStream(keystore), keystorePassword.toCharArray());
-      } catch (Exception ex) {
-        throw new FlumeException(
-            "Avro source configured with invalid keystore: " + keystore, ex);
+      enableSsl = context.getBoolean(SSL_KEY, false);
+      if (enableSsl) {
+        keystore = context.getString(KEYSTORE_KEY);
+        keystorePassword = context.getString(KEYSTORE_PASSWORD_KEY);
+        keystoreType = context.getString(KEYSTORE_TYPE_KEY, "JKS");
+        excludeProtocolsAndLoadKeyStore(context);
       }
     }
 
@@ -226,6 +221,29 @@ public class AvroSource extends AbstractSource implements EventDrivenSource,
 
     if (sourceCounter == null) {
       sourceCounter = new SourceCounter(getName());
+    }
+  }
+
+  public void excludeProtocolsAndLoadKeyStore(Context context) {
+    String excludeProtocolsStr = context.getString(EXCLUDE_PROTOCOLS);
+    if (excludeProtocolsStr == null) {
+      excludeProtocols.add("SSLv3");
+    } else {
+      excludeProtocols.addAll(Arrays.asList(excludeProtocolsStr.split(" ")));
+      if (!excludeProtocols.contains("SSLv3")) {
+        excludeProtocols.add("SSLv3");
+      }
+    }
+    Preconditions.checkNotNull(keystore,
+            KEYSTORE_KEY + " must be specified when SSL is enabled");
+    Preconditions.checkNotNull(keystorePassword,
+            KEYSTORE_PASSWORD_KEY + " must be specified when SSL is enabled");
+    try {
+      KeyStore ks = KeyStore.getInstance(keystoreType);
+      ks.load(new FileInputStream(keystore), keystorePassword.toCharArray());
+    } catch (Exception ex) {
+      throw new FlumeException(
+              "Avro source configured with invalid keystore: " + keystore, ex);
     }
   }
 

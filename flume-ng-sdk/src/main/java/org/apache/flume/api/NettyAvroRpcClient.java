@@ -54,6 +54,9 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
+import com.mapr.web.security.SslConfig;
+import com.mapr.web.security.WebSecurityManager;
+import com.mapr.web.security.SslConfig.SslConfigScope;
 import org.apache.avro.ipc.CallFuture;
 import org.apache.avro.ipc.NettyTransceiver;
 import org.apache.avro.ipc.Transceiver;
@@ -104,6 +107,9 @@ public class NettyAvroRpcClient extends AbstractRpcClient implements RpcClient {
   private boolean enableDeflateCompression;
   private int compressionLevel;
   private int maxIoWorkers;
+
+  private static final String MAPR_SECURITY_ENABLED = "mapr_sec_enabled";
+
 
   /**
    * This constructor is intended to be called from {@link RpcClientFactory}.
@@ -598,25 +604,28 @@ public class NettyAvroRpcClient extends AbstractRpcClient implements RpcClient {
       }
     }
 
-    enableSsl = Boolean.parseBoolean(properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_SSL));
-    trustAllCerts = Boolean.parseBoolean(properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_TRUST_ALL_CERTS));
-    truststore = properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_TRUSTSTORE);
-    truststorePassword = properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_PASSWORD);
-    truststoreType = properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_TYPE, "JKS");
-    String excludeProtocolsStr = properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_EXCLUDE_PROTOCOLS);
-    if (excludeProtocolsStr == null) {
-      excludeProtocols.add("SSLv3");
+    boolean maprSaslEnabled = Boolean.parseBoolean(System.getProperty(MAPR_SECURITY_ENABLED,
+            "false"));
+    if (properties.getProperty(RpcClientConfigurationConstants.CONFIG_SSL) == null
+            && maprSaslEnabled) {
+      enableSsl = true;
+      SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfigScope.SCOPE_CLIENT_ONLY);
+      truststore = sslConfig.getClientTruststoreLocation();
+      truststorePassword = new String(sslConfig.getClientTruststorePassword());
+      truststoreType = sslConfig.getClientTruststoreType().toUpperCase();
+      excludeProtocols(properties);
     } else {
-      excludeProtocols.addAll(Arrays.asList(excludeProtocolsStr.split(" ")));
-      if (!excludeProtocols.contains("SSLv3")) {
-        excludeProtocols.add("SSLv3");
-      }
+      enableSsl = Boolean.parseBoolean(properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_SSL));
+      trustAllCerts = Boolean.parseBoolean(properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_TRUST_ALL_CERTS));
+      truststore = properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_TRUSTSTORE);
+      truststorePassword = properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_PASSWORD);
+      truststoreType = properties.getProperty(
+              RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_TYPE, "JKS");
+      excludeProtocols(properties);
     }
 
     String maxIoWorkersStr = properties.getProperty(RpcClientConfigurationConstants.MAX_IO_WORKERS);
@@ -636,6 +645,19 @@ public class NettyAvroRpcClient extends AbstractRpcClient implements RpcClient {
     }
 
     this.connect();
+  }
+
+  protected void excludeProtocols(Properties properties) {
+    String excludeProtocolsStr = properties.getProperty(
+            RpcClientConfigurationConstants.CONFIG_EXCLUDE_PROTOCOLS);
+    if (excludeProtocolsStr == null) {
+      excludeProtocols.add("SSLv3");
+    } else {
+      excludeProtocols.addAll(Arrays.asList(excludeProtocolsStr.split(" ")));
+      if (!excludeProtocols.contains("SSLv3")) {
+        excludeProtocols.add("SSLv3");
+      }
+    }
   }
 
   /**

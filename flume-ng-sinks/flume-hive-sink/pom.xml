@@ -23,7 +23,7 @@ limitations under the License.
   <parent>
     <groupId>org.apache.flume</groupId>
     <artifactId>flume-ng-sinks</artifactId>
-    <version>1.8.0-mapr</version>
+    <version>1.8.0-mapr-1901</version>
   </parent>
 
   <groupId>org.apache.flume.flume-ng-sinks</groupId>

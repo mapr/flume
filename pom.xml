@@ -774,12 +774,12 @@ limitations under the License.
   <repositories>
     <repository>
       <id>repository.mapr.com</id>
-      <url>http://repository.mapr.com/maven/</url>
+      <url>${env.MAPR_MAVEN_REPO}</url>
       <releases>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
       </releases>
       <snapshots>
-        <enabled>false</enabled>
+        <enabled>true</enabled>
       </snapshots>
     </repository>
 

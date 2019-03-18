@@ -117,7 +117,7 @@ limitations under the License.
     <xerces.version>2.9.1</xerces.version>
     <wiremock.version>1.53</wiremock.version>
     <zookeeper.version>3.4.5</zookeeper.version>
-    <mapr.version>6.1.0-mapr-SNAPSHOT</mapr.version>
+    <mapr.version>6.2.0-mapr-SNAPSHOT</mapr.version>
   </properties>
 
   <modules>
@@ -1429,6 +1429,7 @@ limitations under the License.
         <groupId>org.apache.kafka</groupId>
         <artifactId>kafka_2.12</artifactId>
         <version>${kafka.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.apache.kafka</groupId>
@@ -1441,6 +1442,7 @@ limitations under the License.
         <groupId>org.apache.kafka</groupId>
         <artifactId>kafka-clients</artifactId>
         <version>${kafka.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.kitesdk</groupId>
@@ -1534,6 +1536,7 @@ limitations under the License.
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-common</artifactId>
         <version>${hadoop.version}</version>
+        <scope>provided</scope>
         <optional>true</optional>
         <exclusions>
           <exclusion>
@@ -1549,6 +1552,7 @@ limitations under the License.
       <dependency>
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-hdfs</artifactId>
+        <scope>provided</scope>
         <version>${hadoop.version}</version>
         <exclusions>
           <exclusion>
@@ -1581,16 +1585,19 @@ limitations under the License.
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-client</artifactId>
         <version>${hadoop.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-annotations</artifactId>
         <version>${hadoop.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-auth</artifactId>
         <version>${hadoop.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.apache.hadoop</groupId>

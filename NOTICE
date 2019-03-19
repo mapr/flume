@@ -1,8 +1,109 @@
 Apache Flume
+
 Copyright 2012 The Apache Software Foundation
+Copyright (c) 2010  StumbleUpon, Inc.  All rights reserved.
+Copyright (C) 2010-2012  The Async HBase Authors.  All rights reserved.
+Copyright (c) 2007-2009, JSR305 expert group
+Copyright (c) 2006 Paul Hammant & ThoughtWorks Inc
+Copyright 2008, Google Inc.
+Copyright (c) 2004-2011 QOS.ch
+Copyright (c) 2004-2011 Paul R. Holser, Jr.
+Copyright (c) 2002-2015 EPFL
+Copyright (c) 2011-2015 Typesafe, Inc.
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
 Portions of this software were developed at
 Cloudera, Inc. (http://www.cloudera.com/).
+
+License: Apache License, Version 2.0
+http://www.apache.org/licenses/LICENSE-2.0.html
+
+-----------------------------------------------------------
+
+For
+async-<version>.jar:
+
+BSD License
+
+Copyright (c) 2010  StumbleUpon, Inc.  All rights reserved.
+
+-----------------------------------------------------------
+
+For
+asynchbase-<version>.jar:
+
+BSD License
+
+Copyright (C) 2010-2012  The Async HBase Authors.  All rights reserved.
+
+New BSD License
+
+http://opensource.org/licenses/BSD-3-Clause
+
+-----------------------------------------------------------
+
+For
+jsr305-<version>.jar:
+
+BSD License
+
+Copyright (c) 2007-2009, JSR305 expert group
+All rights reserved.
+
+http://www.opensource.org/licenses/bsd-license.php
+
+-----------------------------------------------------------
+
+For
+paranamer-<version>.jar:
+
+BSD License
+
+Copyright (c) 2006 Paul Hammant & ThoughtWorks Inc
+All rights reserved.
+
+-----------------------------------------------------------
+
+For
+protobuf-java-<version>.jar:
+
+New BSD License
+
+Copyright 2008, Google Inc.
+All rights reserved.
+
+-----------------------------------------------------------
+
+For
+slf4j-api-<version>.jar:
+slf4j-log4j12-<version>.jar:
+
+MIT license
+
+Copyright (c) 2004-2011 QOS.ch
+All rights reserved.
+
+-----------------------------------------------------------
+
+For
+jopt-simple-<version>.jar:
+
+The MIT License
+
+Copyright (c) 2004-2011 Paul R. Holser, Jr.
+
+-----------------------------------------------------------
+
+For
+scala-library-<version>.jar:
+scala-logging_2.11-<version>.jar:
+scala-reflect-<version>.jar:
+
+BSD License
+
+Copyright (c) 2002-2015 EPFL
+Copyright (c) 2011-2015 Typesafe, Inc.
+
+All rights reserved.

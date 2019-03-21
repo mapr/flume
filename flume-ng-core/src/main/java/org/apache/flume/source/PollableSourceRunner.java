@@ -87,14 +87,19 @@ public class PollableSourceRunner extends SourceRunner {
   @Override
   public void stop() {
 
-    runner.shouldStop.set(true);
+    if (runnerThread != null) {
+      runner.shouldStop.set(true);
 
-    try {
-      runnerThread.interrupt();
-      runnerThread.join();
-    } catch (InterruptedException e) {
-      logger.warn("Interrupted while waiting for polling runner to stop. Please report this.", e);
-      Thread.currentThread().interrupt();
+      while (runnerThread.isAlive()) {
+        try {
+          logger.debug("Waiting for runner thread to exit");
+          runnerThread.join(500);
+        } catch (InterruptedException e) {
+          logger.warn("Interrupted while waiting for polling runner to stop. Please report this.",
+                  e);
+          Thread.currentThread().interrupt();
+        }
+      }
     }
 
     Source source = getSource();

@@ -33,6 +33,7 @@ import org.apache.flume.Event;
 import org.apache.flume.FlumeException;
 import org.apache.flume.channel.BasicChannelSemantics;
 import org.apache.flume.channel.BasicTransactionSemantics;
+import org.apache.flume.channel.kafka.KafkaChannel.ConsumerAndRecords;
 import org.apache.flume.conf.ConfigurationException;
 import org.apache.flume.conf.LogPrivacyUtil;
 import org.apache.flume.event.EventBuilder;
@@ -65,19 +66,24 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Pattern;
 
 import static org.apache.flume.channel.kafka.KafkaChannelConfiguration.*;
 
@@ -96,18 +102,18 @@ public class KafkaChannel extends BasicChannelSemantics {
   private KafkaProducer<String, byte[]> producer;
   private final String channelUUID = UUID.randomUUID().toString();
 
-  private AtomicReference<String> topic = new AtomicReference<String>();
+//  private AtomicReference<String> topic = new AtomicReference<String>();
+  private AtomicReference<List<String>> topics = new AtomicReference<>(Collections.EMPTY_LIST);
+  private AtomicReference<Pattern> topicsPattern = new AtomicReference<>();
+
   private boolean parseAsFlumeEvent = DEFAULT_PARSE_AS_FLUME_EVENT;
   private String zookeeperConnect = null;
-  private String topicStr = DEFAULT_TOPIC;
   private String groupId = DEFAULT_GROUP_ID;
   private String partitionHeader = null;
   private Integer staticPartitionId;
   @Deprecated
   private boolean migrateZookeeperOffsets = DEFAULT_MIGRATE_ZOOKEEPER_OFFSETS;
 
-  // used to indicate if a rebalance has occurred during the current transaction
-  AtomicBoolean rebalanceFlag = new AtomicBoolean();
   // This isn't a Kafka property per se, but we allow it to be configurable
   private long pollTimeout = DEFAULT_POLL_TIMEOUT;
 
@@ -141,7 +147,12 @@ public class KafkaChannel extends BasicChannelSemantics {
     }
     producer = new KafkaProducer<String, byte[]>(producerProps);
     // We always have just one topic being read by one thread
-    logger.info("Topic = {}", topic.get());
+    if (topicsPattern.get() != null) {
+      logger.info("Topics pattern = {}", topicsPattern.get().pattern());
+    } else {
+      logger.info("Topics = {}", topics.get());
+    }
+
     counter.start();
     super.start();
   }
@@ -171,14 +182,28 @@ public class KafkaChannel extends BasicChannelSemantics {
 
     // Can remove in the next release
     translateOldProps(ctx);
+    String topicsStr = ctx.getString(TOPICS_REGEX);
+    if (topicsStr != null && !topicsStr.isEmpty()) {
+      topicsPattern.set(Pattern.compile(topicsStr));
+      logger.warn("Topics regex - '{}' is specified. " +
+              "This channel can be used only for consuming data.", topicsStr);
+    } else if ((topicsStr = ctx.getString(TOPICS)) != null &&
+            !topicsStr.isEmpty()) {
+      // Parsing in accordance to how it is done in KafkaSource
+      List<String> topicsList = Arrays.asList(topicsStr.split("^\\s+|\\s*,\\s*|\\s+$"));
+      topics.set(topicsList);
 
-    topicStr = ctx.getString(TOPIC_CONFIG);
-    if (topicStr == null || topicStr.isEmpty()) {
-      topicStr = DEFAULT_TOPIC;
-      logger.info("Topic was not specified. Using {} as the topic.", topicStr);
+      if (topicsList.size() > 1) {
+        logger.warn("There are multiple topics specified. " +
+                "And for publishing data only first one - {} will be used.", topicsList.get(0));
+      }
+    } else if ((topicsStr = ctx.getString(TOPIC_CONFIG)) != null &&
+            !topicsStr.isEmpty()) {
+      topics.set(Arrays.asList(topicsStr));
+    } else {
+      topics.set(Arrays.asList(DEFAULT_TOPIC));
+      logger.info("Topic(s) was not specified. Using {} as the topic.", DEFAULT_TOPIC);
     }
-
-    topic.set(topicStr);
 
     groupId = ctx.getString(KAFKA_CONSUMER_PREFIX + ConsumerConfig.GROUP_ID_CONFIG);
     if (groupId == null || groupId.isEmpty()) {
@@ -188,7 +213,7 @@ public class KafkaChannel extends BasicChannelSemantics {
 
     String bootStrapServers = null;
 
-    if (!isStreams(topicStr)) {
+    if (!isStreams(topicsStr)) {
       bootStrapServers = ctx.getString(BOOTSTRAP_SERVERS_CONFIG);
       if (bootStrapServers == null || bootStrapServers.isEmpty()) {
         throw new ConfigurationException("Bootstrap Servers must be specified");
@@ -317,10 +342,17 @@ public class KafkaChannel extends BasicChannelSemantics {
   private synchronized ConsumerAndRecords createConsumerAndRecords() {
     try {
       KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<String, byte[]>(consumerProps);
-      ConsumerAndRecords car = new ConsumerAndRecords(consumer, channelUUID);
+      Lock rebalanceLock = new ReentrantLock(true);
+
+      ConsumerAndRecords car = new ConsumerAndRecords(consumer, channelUUID, rebalanceLock);
       logger.info("Created new consumer to connect to Kafka");
-      car.consumer.subscribe(Arrays.asList(topic.get()),
-                             new ChannelRebalanceListener(rebalanceFlag));
+
+      if (topicsPattern.get() != null) {
+        car.consumer.subscribe(topicsPattern.get(), new ChannelRebalanceListener(car));
+      } else {
+        car.consumer.subscribe(topics.get(), new ChannelRebalanceListener(car));
+      }
+
       car.offsets = new HashMap<TopicPartition, OffsetAndMetadata>();
       consumers.add(car);
       return car;
@@ -334,40 +366,57 @@ public class KafkaChannel extends BasicChannelSemantics {
             JaasUtils.isZkSecurityEnabled(), ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, 10,
             Time.SYSTEM, "kafka.server", "SessionExpireListener");
          KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(consumerProps)) {
-      Map<TopicPartition, OffsetAndMetadata> kafkaOffsets = getKafkaOffsets(consumer);
-      if (!kafkaOffsets.isEmpty()) {
-        logger.info("Found Kafka offsets for topic {}. Will not migrate from zookeeper", topicStr);
-        logger.debug("Offsets found: {}", kafkaOffsets);
-        return;
-      }
+      Map<String, List<PartitionInfo>> topics = getKafkaTopics(consumer);
+      for (String topic : topics.keySet()) {
+        Map<TopicPartition, OffsetAndMetadata> kafkaOffsets = getKafkaOffsets(consumer, topic);
+        if (!kafkaOffsets.isEmpty()) {
+          logger.info("Found Kafka offsets for topic {}. Will not migrate from zookeeper", topic);
+          logger.debug("Offsets found: {}", kafkaOffsets);
+          continue;
+        }
 
-      logger.info("No Kafka offsets found. Migrating zookeeper offsets");
-      Map<TopicPartition, OffsetAndMetadata> zookeeperOffsets =
-              getZookeeperOffsets(zkClient, consumer);
-      if (zookeeperOffsets.isEmpty()) {
-        logger.warn("No offsets to migrate found in Zookeeper");
-        return;
-      }
+        logger.info("No Kafka offsets found. Migrating zookeeper offsets");
+        Map<TopicPartition, OffsetAndMetadata> zookeeperOffsets =
+                getZookeeperOffsets(zkClient, consumer, topic);
+        if (zookeeperOffsets.isEmpty()) {
+          logger.warn("No offsets to migrate found in Zookeeper");
+          continue;
+        }
 
-      logger.info("Committing Zookeeper offsets to Kafka");
-      logger.debug("Offsets to commit: {}", zookeeperOffsets);
-      consumer.commitSync(zookeeperOffsets);
-      // Read the offsets to verify they were committed
-      Map<TopicPartition, OffsetAndMetadata> newKafkaOffsets = getKafkaOffsets(consumer);
-      logger.debug("Offsets committed: {}", newKafkaOffsets);
-      if (!newKafkaOffsets.keySet().containsAll(zookeeperOffsets.keySet())) {
-        throw new FlumeException("Offsets could not be committed");
+        logger.info("Committing Zookeeper offsets to Kafka");
+        logger.debug("Offsets to commit: {}", zookeeperOffsets);
+        consumer.commitSync(zookeeperOffsets);
+        // Read the offsets to verify they were committed
+        Map<TopicPartition, OffsetAndMetadata> newKafkaOffsets = getKafkaOffsets(consumer, topic);
+        logger.debug("Offsets committed: {}", newKafkaOffsets);
+        if (!newKafkaOffsets.keySet().containsAll(zookeeperOffsets.keySet())) {
+          throw new FlumeException("Offsets could not be committed");
+        }
       }
     }
   }
 
+  private Map<String, List<PartitionInfo>> getKafkaTopics(KafkaConsumer<String, byte[]> client) {
+    Map<String, List<PartitionInfo>> allTopics = client.listTopics();
+
+    Map<String, List<PartitionInfo>> filteredTopics = new HashMap<>();
+    for (Map.Entry<String, List<PartitionInfo>> topicInfo : allTopics.entrySet()) {
+      String topic = topicInfo.getKey();
+      if ((topicsPattern.get() != null && topicsPattern.get().matcher(topic).matches())
+              || topics.get().contains(topic)) {
+        filteredTopics.put(topic, topicInfo.getValue());
+      }
+    }
+
+    return filteredTopics;
+  }
 
   private Map<TopicPartition, OffsetAndMetadata> getKafkaOffsets(
-      KafkaConsumer<String, byte[]> client) {
+      KafkaConsumer<String, byte[]> client, String topic) {
     Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-    List<PartitionInfo> partitions = client.partitionsFor(topicStr);
+    List<PartitionInfo> partitions = client.partitionsFor(topic);
     for (PartitionInfo partition : partitions) {
-      TopicPartition key = new TopicPartition(topicStr, partition.partition());
+      TopicPartition key = new TopicPartition(topic, partition.partition());
       OffsetAndMetadata offsetAndMetadata = client.committed(key);
       if (offsetAndMetadata != null) {
         offsets.put(key, offsetAndMetadata);
@@ -377,11 +426,11 @@ public class KafkaChannel extends BasicChannelSemantics {
   }
 
   private Map<TopicPartition, OffsetAndMetadata> getZookeeperOffsets(
-          KafkaZkClient zkClient, KafkaConsumer<String, byte[]> consumer) {
+          KafkaZkClient zkClient, KafkaConsumer<String, byte[]> consumer, String topic) {
     Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-    List<PartitionInfo> partitions = consumer.partitionsFor(topicStr);
+    List<PartitionInfo> partitions = consumer.partitionsFor(topic);
     for (PartitionInfo partition : partitions) {
-      TopicPartition topicPartition = new TopicPartition(topicStr, partition.partition());
+      TopicPartition topicPartition = new TopicPartition(topic, partition.partition());
       Option<Object> optionOffset = zkClient.getConsumerOffset(groupId, topicPartition);
       if (optionOffset.nonEmpty()) {
         Long offset = (Long) optionOffset.get();
@@ -421,8 +470,9 @@ public class KafkaChannel extends BasicChannelSemantics {
     // For put transactions, serialize the events and hold them until the commit goes is requested.
     private Optional<LinkedList<ProducerRecord<String, byte[]>>> producerRecords =
         Optional.absent();
-    // For take transactions, deserialize and hold them till commit goes through
-    private Optional<LinkedList<Event>> events = Optional.absent();
+    // For take transactions, hold records till commit goes through
+    private Optional<LinkedList<ConsumerRecord<String, byte[]>>> consumerRecords
+            = Optional.absent();
     private Optional<SpecificDatumWriter<AvroFlumeEvent>> writer =
             Optional.absent();
     private Optional<SpecificDatumReader<AvroFlumeEvent>> reader =
@@ -439,7 +489,7 @@ public class KafkaChannel extends BasicChannelSemantics {
 
     @Override
     protected void doBegin() throws InterruptedException {
-      rebalanceFlag.set(false);
+      consumerAndRecords.get().rebalanceLock.lock();
     }
 
     @Override
@@ -462,13 +512,15 @@ public class KafkaChannel extends BasicChannelSemantics {
             partitionId = Integer.parseInt(headerVal);
           }
         }
+
+        String topicToPublish = topics.get().get(0);
         if (partitionId != null) {
           producerRecords.get().add(
-              new ProducerRecord<String, byte[]>(topic.get(), partitionId, key,
+              new ProducerRecord<String, byte[]>(topicToPublish, partitionId, key,
                                                  serializeValue(event, parseAsFlumeEvent)));
         } else {
           producerRecords.get().add(
-              new ProducerRecord<String, byte[]>(topic.get(), key,
+              new ProducerRecord<String, byte[]>(topicToPublish, key,
                                                  serializeValue(event, parseAsFlumeEvent)));
         }
         counter.incrementEventPutAttemptCount();
@@ -493,131 +545,137 @@ public class KafkaChannel extends BasicChannelSemantics {
       } catch (Exception ex) {
         logger.warn("Error while shutting down consumer", ex);
       }
-      if (!events.isPresent()) {
-        events = Optional.of(new LinkedList<Event>());
+      if (!consumerRecords.isPresent()) {
+        consumerRecords = Optional.of(new LinkedList<ConsumerRecord<String, byte[]>>());
       }
-      Event e;
-      // Give the channel a chance to commit if there has been a rebalance
-      if (rebalanceFlag.get()) {
-        logger.debug("Returning null event after Consumer rebalance.");
-        return null;
-      }
-      if (!consumerAndRecords.get().failedEvents.isEmpty()) {
-        e = consumerAndRecords.get().failedEvents.removeFirst();
-      } else {
-        if ( logger.isTraceEnabled() ) {
-          logger.trace("Assignment during take: {}",
-              consumerAndRecords.get().consumer.assignment().toString());
-        }
-        try {
+      ConsumerRecord<String, byte[]> record;
+
+      try {
+        if (!consumerAndRecords.get().failedRecords.isEmpty()) {
+          record = consumerAndRecords.get().failedRecords.removeFirst();
+        } else {
+          if (logger.isTraceEnabled()) {
+            logger.trace("Assignment during take: {}",
+                    consumerAndRecords.get().consumer.assignment().toString());
+          }
+
           long startTime = System.nanoTime();
           if (!consumerAndRecords.get().recordIterator.hasNext()) {
             consumerAndRecords.get().poll();
           }
           if (consumerAndRecords.get().recordIterator.hasNext()) {
-            ConsumerRecord<String, byte[]> record = consumerAndRecords.get().recordIterator.next();
-            e = deserializeValue(record.value(), parseAsFlumeEvent);
+            record = consumerAndRecords.get().recordIterator.next();
             TopicPartition tp = new TopicPartition(record.topic(), record.partition());
-
             OffsetAndMetadata oam = new OffsetAndMetadata(record.offset() + 1, batchUUID);
-            consumerAndRecords.get().saveOffsets(tp,oam);
-
-            //Add the key to the header
-            if (record.key() != null) {
-              e.getHeaders().put(KEY_HEADER, record.key());
-            }
+            consumerAndRecords.get().saveOffsets(tp, oam);
 
             long endTime = System.nanoTime();
             counter.addToKafkaEventGetTimer((endTime - startTime) / (1000 * 1000));
 
             if (logger.isDebugEnabled()) {
               logger.debug("{} processed output from partition {} offset {}",
-                  new Object[] {getName(), record.partition(), record.offset()});
+                      new Object[]{getName(), record.partition(), record.offset()});
             }
           } else {
             return null;
           }
           counter.incrementEventTakeAttemptCount();
-        } catch (Exception ex) {
-          logger.warn("Error while getting events from Kafka. This is usually caused by " +
-                      "trying to read a non-flume event. Ensure the setting for " +
-                      "parseAsFlumeEvent is correct", ex);
-          throw new ChannelException("Error while getting events from Kafka", ex);
         }
+        eventTaken = true;
+        consumerRecords.get().add(record);
+
+        Event e = deserializeValue(record.value(), parseAsFlumeEvent);
+
+        //Add the key to the header
+        if (record.key() != null) {
+          e.getHeaders().put(KEY_HEADER, record.key());
+        }
+
+        return e;
+      } catch (Exception ex) {
+        logger.warn("Error while getting events from Kafka. This is usually caused by " +
+                "trying to read a non-flume event. Ensure the setting for " +
+                "parseAsFlumeEvent is correct", ex);
+        throw new ChannelException("Error while getting events from Kafka", ex);
       }
-      eventTaken = true;
-      events.get().add(e);
-      return e;
     }
 
     @Override
     protected void doCommit() throws InterruptedException {
-      logger.trace("Starting commit");
-      if (type.equals(TransactionType.NONE)) {
-        return;
-      }
-      if (type.equals(TransactionType.PUT)) {
-        if (!kafkaFutures.isPresent()) {
-          kafkaFutures = Optional.of(new LinkedList<Future<RecordMetadata>>());
+      try {
+        logger.trace("Starting commit");
+        if (type.equals(TransactionType.NONE)) {
+          return;
         }
-        try {
-          long batchSize = producerRecords.get().size();
-          long startTime = System.nanoTime();
-          int index = 0;
-          for (ProducerRecord<String, byte[]> record : producerRecords.get()) {
-            index++;
-            kafkaFutures.get().add(producer.send(record, new ChannelCallback(index, startTime)));
+        if (type.equals(TransactionType.PUT)) {
+          if (!kafkaFutures.isPresent()) {
+            kafkaFutures = Optional.of(new LinkedList<Future<RecordMetadata>>());
           }
-          //prevents linger.ms from being a problem
-          producer.flush();
+          try {
+            long batchSize = producerRecords.get().size();
+            long startTime = System.nanoTime();
+            int index = 0;
+            for (ProducerRecord<String, byte[]> record : producerRecords.get()) {
+              index++;
+              kafkaFutures.get().add(producer.send(record, new ChannelCallback(index, startTime)));
+            }
+            //prevents linger.ms from being a problem
+            producer.flush();
 
-          for (Future<RecordMetadata> future : kafkaFutures.get()) {
-            future.get();
+            for (Future<RecordMetadata> future : kafkaFutures.get()) {
+              future.get();
+            }
+            long endTime = System.nanoTime();
+            counter.addToKafkaEventSendTimer((endTime - startTime) / (1000 * 1000));
+            counter.addToEventPutSuccessCount(batchSize);
+            producerRecords.get().clear();
+            kafkaFutures.get().clear();
+          } catch (Exception ex) {
+            logger.warn("Sending events to Kafka failed", ex);
+            throw new ChannelException("Commit failed as send to Kafka failed",
+                    ex);
           }
-          long endTime = System.nanoTime();
-          counter.addToKafkaEventSendTimer((endTime - startTime) / (1000 * 1000));
-          counter.addToEventPutSuccessCount(batchSize);
-          producerRecords.get().clear();
-          kafkaFutures.get().clear();
-        } catch (Exception ex) {
-          logger.warn("Sending events to Kafka failed", ex);
-          throw new ChannelException("Commit failed as send to Kafka failed",
-                  ex);
-        }
-      } else {
-        // event taken ensures that we have collected events in this transaction
-        // before committing
-        if (consumerAndRecords.get().failedEvents.isEmpty() && eventTaken) {
-          logger.trace("About to commit batch");
-          long startTime = System.nanoTime();
-          consumerAndRecords.get().commitOffsets();
-          long endTime = System.nanoTime();
-          counter.addToKafkaCommitTimer((endTime - startTime) / (1000 * 1000));
-          if (logger.isDebugEnabled()) {
-            logger.debug(consumerAndRecords.get().getCommittedOffsetsString());
+        } else {
+          // event taken ensures that we have collected events in this transaction
+          // before committing
+          if (consumerAndRecords.get().failedRecords.isEmpty() && eventTaken) {
+            logger.trace("About to commit batch");
+            long startTime = System.nanoTime();
+            consumerAndRecords.get().commitOffsets();
+            long endTime = System.nanoTime();
+            counter.addToKafkaCommitTimer((endTime - startTime) / (1000 * 1000));
+            if (logger.isDebugEnabled()) {
+              logger.debug(consumerAndRecords.get().getCommittedOffsetsString());
+            }
           }
-        }
 
-        int takes = events.get().size();
-        if (takes > 0) {
-          counter.addToEventTakeSuccessCount(takes);
-          events.get().clear();
+          int takes = consumerRecords.get().size();
+          if (takes > 0) {
+            counter.addToEventTakeSuccessCount(takes);
+            consumerRecords.get().clear();
+          }
         }
+      } finally {
+        consumerAndRecords.get().rebalanceLock.unlock();
       }
     }
 
     @Override
     protected void doRollback() throws InterruptedException {
-      if (type.equals(TransactionType.NONE)) {
-        return;
-      }
-      if (type.equals(TransactionType.PUT)) {
-        producerRecords.get().clear();
-        kafkaFutures.get().clear();
-      } else {
-        counter.addToRollbackCounter(events.get().size());
-        consumerAndRecords.get().failedEvents.addAll(events.get());
-        events.get().clear();
+      try {
+        if (type.equals(TransactionType.NONE)) {
+          return;
+        }
+        if (type.equals(TransactionType.PUT)) {
+          producerRecords.get().clear();
+          kafkaFutures.get().clear();
+        } else {
+          counter.addToRollbackCounter(consumerRecords.get().size());
+          consumerAndRecords.get().failedRecords.addAll(consumerRecords.get());
+          consumerRecords.get().clear();
+        }
+      } finally {
+        consumerAndRecords.get().rebalanceLock.unlock();
       }
     }
 
@@ -690,20 +748,23 @@ public class KafkaChannel extends BasicChannelSemantics {
   }
 
   /* Object to store our consumer */
-  private class ConsumerAndRecords {
+  class ConsumerAndRecords {
     final KafkaConsumer<String, byte[]> consumer;
     final String uuid;
-    final LinkedList<Event> failedEvents = new LinkedList<Event>();
+    final LinkedList<ConsumerRecord<String, byte[]>> failedRecords
+            = new LinkedList<ConsumerRecord<String, byte[]>>();
+    final Lock rebalanceLock;
 
     ConsumerRecords<String, byte[]> records;
-    Iterator<ConsumerRecord<String, byte[]>> recordIterator;
+    volatile Iterator<ConsumerRecord<String, byte[]>> recordIterator;
     Map<TopicPartition, OffsetAndMetadata> offsets;
 
-    ConsumerAndRecords(KafkaConsumer<String, byte[]> consumer, String uuid) {
+    ConsumerAndRecords(KafkaConsumer<String, byte[]> consumer, String uuid, Lock rebalanceLock) {
       this.consumer = consumer;
       this.uuid = uuid;
       this.records = ConsumerRecords.empty();
       this.recordIterator = records.iterator();
+      this.rebalanceLock = rebalanceLock;
     }
 
     private void poll() {
@@ -725,6 +786,53 @@ public class KafkaChannel extends BasicChannelSemantics {
       } finally {
         logger.trace("About to clear offsets map.");
         offsets.clear();
+      }
+    }
+
+    protected void revokePartitions(Collection<TopicPartition> partitions) {
+      // `recordsIterator` might still contain records at this point.
+      // That's, for example, because of different batch size on Sink side,
+      // which defines TX boundaries
+      // and batch size used for Kafka consumer.
+      // And those remaining records might belong to revoked partitions.
+      // So they have to be filtered out.
+      // That's because at this point TX (and correspondingly offsets) have to be committed.
+      // So consumer (for which partition is(or going to be) assigned)
+      // will (re-)read them causing having
+      // duplicates.
+      Set<TopicPartition> revokedPartititons = new HashSet<>(partitions);
+
+      if (!failedRecords.isEmpty()) {
+        Iterator<ConsumerRecord<String, byte[]>> it = failedRecords.iterator();
+
+        while (it.hasNext()) {
+          ConsumerRecord<String, byte[]> rec = it.next();
+          TopicPartition recTp = new TopicPartition(rec.topic(), rec.partition());
+
+          if (revokedPartititons.contains(recTp)) {
+            it.remove();
+            logger.debug("Revoked record (being previoulsy fetched and failed) " +
+                    "for topic {} - partition {} ", rec.topic(), rec.partition());
+          }
+        }
+      }
+
+      if (recordIterator.hasNext()) {
+        List<ConsumerRecord<String, byte[]>> filteredRecords = new ArrayList<>();
+
+        while (recordIterator.hasNext()) {
+          ConsumerRecord<String, byte[]> rec = recordIterator.next();
+
+          TopicPartition recTp = new TopicPartition(rec.topic(), rec.partition());
+          if (!revokedPartititons.contains(recTp)) {
+            filteredRecords.add(rec);
+          } else {
+            logger.debug("Revoked record (being previoulsy fetched) for topic {} - partition {} ",
+                    rec.topic(), rec.partition());
+          }
+        }
+
+        recordIterator = filteredRecords.iterator();
       }
     }
 
@@ -794,18 +902,35 @@ class ChannelCallback implements Callback {
 
 class ChannelRebalanceListener implements ConsumerRebalanceListener {
   private static final Logger log = LoggerFactory.getLogger(ChannelRebalanceListener.class);
-  private AtomicBoolean rebalanceFlag;
+  private ConsumerAndRecords car;
 
-  public ChannelRebalanceListener(AtomicBoolean rebalanceFlag) {
-    this.rebalanceFlag = rebalanceFlag;
+  public ChannelRebalanceListener(ConsumerAndRecords car) {
+    this.car = car;
   }
 
   // Set a flag that a rebalance has occurred. Then we can commit the currently written transactions
   // on the next doTake() pass.
   public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-    for (TopicPartition partition : partitions) {
-      log.info("topic {} - partition {} revoked.", partition.topic(), partition.partition());
-      rebalanceFlag.set(true);
+    if (partitions.isEmpty()) {
+      return;
+    }
+
+    log.info("waiting for \"in progress\" transaction to complete...");
+
+    // Acquiring this lock means that "in progress" transaction completed.
+    // And performing "revoking" with that lock being help is safety from consistency standpoint.
+    car.rebalanceLock.lock();
+    try {
+      log.info("\"in progress\" transaction completed, proceeding with actual revoking partitions");
+
+      car.revokePartitions(partitions);
+
+      for (TopicPartition partition : partitions) {
+        log.info("topic {} - partition {} revoked.", partition.topic(), partition.partition());
+      }
+    } finally {
+      log.info("partitions revoking completed.", partitions);
+      car.rebalanceLock.unlock();
     }
   }
 

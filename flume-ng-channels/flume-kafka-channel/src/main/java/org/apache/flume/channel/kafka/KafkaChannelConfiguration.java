@@ -35,6 +35,8 @@ public class KafkaChannelConfiguration {
   public static final String DEFAULT_VALUE_DESERIAIZER =
       "org.apache.kafka.common.serialization.ByteArrayDeserializer";
   public static final String TOPIC_CONFIG = KAFKA_PREFIX + "topic";
+  public static final String TOPICS = KAFKA_PREFIX + "topics";
+  public static final String TOPICS_REGEX = TOPICS + "." + "regex";
   public static final String BOOTSTRAP_SERVERS_CONFIG =
       KAFKA_PREFIX + CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
   public static final String DEFAULT_TOPIC = "flume-channel";

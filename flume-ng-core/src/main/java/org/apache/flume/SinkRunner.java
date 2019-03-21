@@ -97,7 +97,6 @@ public class SinkRunner implements LifecycleAware {
 
     if (runnerThread != null) {
       runner.shouldStop.set(true);
-      runnerThread.interrupt();
 
       while (runnerThread.isAlive()) {
         try {
@@ -106,6 +105,7 @@ public class SinkRunner implements LifecycleAware {
         } catch (InterruptedException e) {
           logger.debug("Interrupted while waiting for runner thread to exit. Exception follows.",
                        e);
+          Thread.currentThread().interrupt();
         }
       }
     }

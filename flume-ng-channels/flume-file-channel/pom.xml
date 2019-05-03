@@ -24,7 +24,7 @@
   <parent>
     <artifactId>flume-ng-channels</artifactId>
     <groupId>org.apache.flume</groupId>
-    <version>1.8.0-mapr</version>
+    <version>1.8.0-mapr-mep-6.x-1904</version>
   </parent>
 
   <groupId>org.apache.flume.flume-ng-channels</groupId>

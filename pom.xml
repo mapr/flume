@@ -27,7 +27,7 @@ limitations under the License.
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.flume</groupId>
   <artifactId>flume-parent</artifactId>
-  <version>1.8.0-mapr-mep-5.x</version>
+  <version>1.8.0-mapr-mep-5.x-1904</version>
   <packaging>pom</packaging>
 
   <name>Apache Flume</name>

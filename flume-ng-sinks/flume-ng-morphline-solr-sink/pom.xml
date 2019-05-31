@@ -84,14 +84,6 @@ limitations under the License.
     </dependency>
 
     <dependency>
-      <groupId>org.kitesdk</groupId>
-      <artifactId>kite-morphlines-solr-core</artifactId>
-      <version>${kite.version}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>test</scope>

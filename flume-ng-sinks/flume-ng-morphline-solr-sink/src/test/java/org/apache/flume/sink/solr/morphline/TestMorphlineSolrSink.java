@@ -64,7 +64,6 @@ import org.kitesdk.morphline.solr.DocumentLoader;
 import org.kitesdk.morphline.solr.SolrLocator;
 import org.kitesdk.morphline.solr.SolrMorphlineContext;
 import org.kitesdk.morphline.solr.SolrServerDocumentLoader;
-import org.kitesdk.morphline.solr.TestEmbeddedSolrServer;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableListMultimap;
@@ -121,7 +120,7 @@ public class TestMorphlineSolrSink extends SolrTestCaseJ4 {
       //solrServer = new HttpSolrServer(EXTERNAL_SOLR_SERVER_URL);
     } else {
       if (TEST_WITH_EMBEDDED_SOLR_SERVER) {
-        solrServer = new TestEmbeddedSolrServer(h.getCoreContainer(), "");
+        //solrServer = new TestEmbeddedSolrServer(h.getCoreContainer(), "");
       } else {
         throw new RuntimeException("Not yet implemented");
         //solrServer = new TestSolrServer(getSolrServer());

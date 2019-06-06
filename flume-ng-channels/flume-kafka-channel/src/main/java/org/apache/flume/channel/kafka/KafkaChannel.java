@@ -213,7 +213,7 @@ public class KafkaChannel extends BasicChannelSemantics {
 
     String bootStrapServers = null;
 
-    if (!isStreams(topicsStr)) {
+    if (!isStreams(ctx)) {
       bootStrapServers = ctx.getString(BOOTSTRAP_SERVERS_CONFIG);
       if (bootStrapServers == null || bootStrapServers.isEmpty()) {
         throw new ConfigurationException("Bootstrap Servers must be specified");
@@ -245,12 +245,14 @@ public class KafkaChannel extends BasicChannelSemantics {
   // We can remove this once the properties are officially deprecated
   private void translateOldProps(Context ctx) {
 
-    if (!(ctx.containsKey(TOPIC_CONFIG))) {
+    if (!(ctx.containsKey(TOPIC_CONFIG))
+            && !(ctx.containsKey(TOPICS))
+            && !(ctx.containsKey(TOPICS_REGEX))) {
       ctx.put(TOPIC_CONFIG, ctx.getString("topic"));
       logger.warn("{} is deprecated. Please use the parameter {}", "topic", TOPIC_CONFIG);
     }
 
-    if (!isStreams(ctx.getString(TOPIC_CONFIG))) {
+    if (!isStreams(ctx)) {
       // Broker List
       // If there is no value we need to check and set the old param and log a warning message
       if (!(ctx.containsKey(BOOTSTRAP_SERVERS_CONFIG))) {
@@ -294,8 +296,17 @@ public class KafkaChannel extends BasicChannelSemantics {
     }
   }
 
-  private boolean isStreams(String topic) {
-    return topic.startsWith("/");
+  private boolean isStreams(Context ctx) {
+    if (ctx.containsKey(TOPIC_CONFIG)
+            && (ctx.getString(TOPIC_CONFIG) != null)) {
+      return ctx.getString(TOPIC_CONFIG).startsWith("/");
+    } else {
+      if (ctx.containsKey(TOPICS_REGEX)) {
+        return ctx.getString(TOPICS_REGEX).startsWith("/");
+      } else {
+        return ctx.getString(TOPICS).startsWith("/");
+      }
+    }
   }
 
   private void setProducerProps(Context ctx, String bootStrapServers) {

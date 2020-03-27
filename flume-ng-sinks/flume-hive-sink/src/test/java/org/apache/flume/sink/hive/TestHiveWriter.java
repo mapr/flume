@@ -101,8 +101,8 @@ public class TestHiveWriter {
   @Before
   public void setUp() throws Exception {
     // 1) prepare hive
-    TxnDbUtil.cleanDb();
-    TxnDbUtil.prepDb();
+    TxnDbUtil.cleanDb(new HiveConf());
+    TxnDbUtil.prepDb(new HiveConf());
 
     // 1) Setup tables
     TestUtil.dropDB(conf, dbName);

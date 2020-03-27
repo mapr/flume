@@ -69,7 +69,7 @@ limitations under the License.
     <guava.version>18.0</guava.version>
     <guava-old.version>11.0.2</guava-old.version>
     <hadoop.version>2.7.4.0-mapr-1908-SNAPSHOT</hadoop.version>
-    <hbase.version>1.0.0</hbase.version>
+    <hbase.version>1.1.13.100-mapr-SNAPSHOT</hbase.version>
     <hbase2.jetty.version>9.3.19.v20170502</hbase2.jetty.version>
     <hbase2.version>2.0.0</hbase2.version>
     <httpcore.version>4.4.6</httpcore.version>
@@ -81,7 +81,7 @@ limitations under the License.
     <junit.version>4.10</junit.version>
     <kafka.version>2.1.1.0-mapr-SNAPSHOT</kafka.version>
     <kite.version>1.0.0</kite.version>
-    <hive.version>1.0.0</hive.version>
+    <hive.version>2.3.6.0-mapr-SNAPSHOT</hive.version>
     <lifecycle-mapping.version>1.0.0</lifecycle-mapping.version>
     <log4j-extras.version>1.1</log4j-extras.version>
     <log4j-log4j.version>1.2.17</log4j-log4j.version>
@@ -116,7 +116,7 @@ limitations under the License.
     <xalan.version>2.7.2</xalan.version>
     <xerces.version>2.9.1</xerces.version>
     <wiremock.version>1.53</wiremock.version>
-    <zookeeper.version>3.4.5</zookeeper.version>
+    <zookeeper.version>3.4.11-mapr-SNAPSHOT</zookeeper.version>
     <mapr.version>6.2.0-mapr-SNAPSHOT</mapr.version>
   </properties>
 

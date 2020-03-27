@@ -105,8 +105,8 @@ public class TestHiveSink {
     TestUtil.setConfValues(conf);
 
     // 1) prepare hive
-    TxnDbUtil.cleanDb();
-    TxnDbUtil.prepDb();
+    TxnDbUtil.cleanDb(new HiveConf());
+    TxnDbUtil.prepDb(new HiveConf());
 
     // 2) Setup Hive client
     SessionState.start(new CliSessionState(conf));

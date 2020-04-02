@@ -60,7 +60,9 @@ limitations under the License.
     <commons-io.version>2.1</commons-io.version>
     <commons-lang.version>2.5</commons-lang.version>
     <curator.version>2.6.0</curator.version>
-    <derby.version>10.14.1.0</derby.version>
+    <!--To avoid appearing version conflict
+    derby.version should be equal derby.version used in mapr-hive-->
+    <derby.version>10.10.2.0</derby.version>
     <elasticsearch.version>0.90.1</elasticsearch.version>
     <fasterxml.jackson.version>2.9.7</fasterxml.jackson.version>
     <fest-reflect.version>1.4</fest-reflect.version>
@@ -454,12 +456,6 @@ limitations under the License.
     <repository>
       <id>repository.mapr.com</id>
       <url>${env.MAPR_MAVEN_REPO}</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
     </repository>
 
     <repository>

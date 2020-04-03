@@ -70,34 +70,6 @@ public abstract class SSLContextAwareAbstractRpcClient extends AbstractRpcClient
               SSLUtil.getGlobalTruststoreType("JKS"));
       excludeProtocols(properties);
     }
-    enableSsl = Boolean.parseBoolean(properties.getProperty(
-      RpcClientConfigurationConstants.CONFIG_SSL));
-    trustAllCerts = Boolean.parseBoolean(properties.getProperty(
-      RpcClientConfigurationConstants.CONFIG_TRUST_ALL_CERTS));
-    truststore = properties.getProperty(
-      RpcClientConfigurationConstants.CONFIG_TRUSTSTORE, SSLUtil.getGlobalTruststorePath());
-    truststorePassword = properties.getProperty(
-      RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_PASSWORD,
-      SSLUtil.getGlobalTruststorePassword());
-    truststoreType = properties.getProperty(
-      RpcClientConfigurationConstants.CONFIG_TRUSTSTORE_TYPE,
-      SSLUtil.getGlobalTruststoreType("JKS"));
-    parseList(properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_EXCLUDE_PROTOCOLS,
-        SSLUtil.getGlobalExcludeProtocols()),
-        excludeProtocols);
-    parseList(properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_INCLUDE_PROTOCOLS,
-        SSLUtil.getGlobalIncludeProtocols()),
-        includeProtocols);
-    parseList(properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_EXCLUDE_CIPHER_SUITES,
-        SSLUtil.getGlobalExcludeCipherSuites()),
-        excludeCipherSuites);
-    parseList(properties.getProperty(
-        RpcClientConfigurationConstants.CONFIG_INCLUDE_CIPHER_SUITES,
-        SSLUtil.getGlobalIncludeCipherSuites()),
-        includeCipherSuites);
   }
 
   private void excludeProtocols(Properties properties) {

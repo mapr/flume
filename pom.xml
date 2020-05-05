@@ -62,7 +62,7 @@ limitations under the License.
     <curator.version>2.6.0</curator.version>
     <!--To avoid appearing version conflict
     derby.version should be equal derby.version used in mapr-hive-->
-    <derby.version>10.10.2.0</derby.version>
+    <derby.version>10.14.2.0</derby.version>
     <elasticsearch.version>0.90.1</elasticsearch.version>
     <fasterxml.jackson.version>2.9.7</fasterxml.jackson.version>
     <fest-reflect.version>1.4</fest-reflect.version>
@@ -114,7 +114,7 @@ limitations under the License.
     <solr-global.version>4.3.0</solr-global.version>
     <slf4j.version>1.7.25</slf4j.version>
     <system-rules.version>1.17.0</system-rules.version>
-    <thrift.version>0.9.3</thrift.version>
+    <thrift.version>0.12.0</thrift.version>
     <twitter4j.version>3.0.3</twitter4j.version>
     <xalan.version>2.7.2</xalan.version>
     <xerces.version>2.12.0</xerces.version>

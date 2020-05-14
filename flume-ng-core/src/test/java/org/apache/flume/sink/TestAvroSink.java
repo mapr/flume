@@ -21,7 +21,7 @@ package org.apache.flume.sink;
 
 import com.google.common.base.Charsets;
 import org.apache.avro.AvroRemoteException;
-import org.apache.avro.ipc.NettyServer;
+import org.apache.avro.ipc.netty.NettyServer;
 import org.apache.avro.ipc.Server;
 import org.apache.avro.ipc.specific.SpecificResponder;
 import org.apache.flume.Channel;
@@ -810,14 +810,13 @@ public class TestAvroSink {
   private static class MockAvroServer implements AvroSourceProtocol {
 
     @Override
-    public Status append(AvroFlumeEvent event) throws AvroRemoteException {
+    public Status append(AvroFlumeEvent event) {
       logger.debug("Received event:{}", event);
       return Status.OK;
     }
 
     @Override
-    public Status appendBatch(List<AvroFlumeEvent> events)
-        throws AvroRemoteException {
+    public Status appendBatch(List<AvroFlumeEvent> events) {
       logger.debug("Received event batch:{}", events);
       return Status.OK;
     }
@@ -841,17 +840,24 @@ public class TestAvroSink {
     }
 
     @Override
-    public Status append(AvroFlumeEvent event) throws AvroRemoteException {
+    public Status append(AvroFlumeEvent event) {
       logger.debug("Received event:{}; delaying for {}ms", event, delay);
-      sleep();
+      try {
+        sleep();
+      } catch (AvroRemoteException e) {
+        throw new RuntimeException(e);
+      }
       return Status.OK;
     }
 
     @Override
-    public Status appendBatch(List<AvroFlumeEvent> events)
-        throws AvroRemoteException {
+    public Status appendBatch(List<AvroFlumeEvent> events) {
       logger.debug("Received event batch:{}; delaying for {}ms", events, delay);
-      sleep();
+      try {
+        sleep();
+      } catch (AvroRemoteException e) {
+        throw new RuntimeException(e);
+      }
       return Status.OK;
     }
 

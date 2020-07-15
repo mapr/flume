@@ -19,7 +19,6 @@
 package org.apache.flume.clients.log4jappender;
 
 import com.google.common.io.Files;
-import com.google.common.io.Resources;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -71,7 +70,7 @@ public class TestLog4jAppenderWithAvro {
   @Before
   public void setUp() throws Exception {
     URL schemaUrl = getClass().getClassLoader().getResource("myrecord.avsc");
-    Files.copy(Resources.newInputStreamSupplier(schemaUrl),
+    Files.copy(new File(schemaUrl.toURI()),
         new File("/tmp/myrecord.avsc"));
 
     port = getFreePort();

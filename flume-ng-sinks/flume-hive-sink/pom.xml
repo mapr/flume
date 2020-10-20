@@ -154,6 +154,16 @@ limitations under the License.
       <artifactId>hive-hcatalog-core</artifactId>
       <scope>provided</scope>
       <version>${hive.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>

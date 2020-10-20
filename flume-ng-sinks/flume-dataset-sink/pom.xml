@@ -64,7 +64,16 @@ limitations under the License.
 
     <dependency>
       <groupId>org.kitesdk</groupId>
-      <artifactId>kite-data-core</artifactId>
+      <artifactId>kite-data-core</artifactId><exclusions>
+      <exclusion>
+        <groupId>org.codehaus.jackson</groupId>
+        <artifactId>jackson-mapper-asl</artifactId>
+      </exclusion>
+      <exclusion>
+        <groupId>org.codehaus.jackson</groupId>
+        <artifactId>jackson-core-asl</artifactId>
+      </exclusion>
+    </exclusions>
     </dependency>
 
     <dependency>
@@ -102,6 +111,16 @@ limitations under the License.
       <artifactId>hadoop-common</artifactId>
       <version>${hadoop2.version}</version>
       <optional>true</optional>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -125,6 +144,16 @@ limitations under the License.
       <artifactId>hadoop-minicluster</artifactId>
       <version>${hadoop2.version}</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>

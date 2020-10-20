@@ -327,7 +327,7 @@ limitations under the License.
 
     <dependency>
       <groupId>org.apache.avro</groupId>
-      <artifactId>avro-ipc</artifactId>
+      <artifactId>avro-ipc-netty</artifactId>
     </dependency>
 
     <dependency>
@@ -385,6 +385,16 @@ limitations under the License.
     <dependency>
       <groupId>com.mapr.security</groupId>
       <artifactId>mapr-security-web</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
   </dependencies>

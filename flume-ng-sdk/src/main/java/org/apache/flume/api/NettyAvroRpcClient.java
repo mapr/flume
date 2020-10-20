@@ -58,7 +58,7 @@ import com.mapr.web.security.SslConfig;
 import com.mapr.web.security.WebSecurityManager;
 import com.mapr.web.security.SslConfig.SslConfigScope;
 import org.apache.avro.ipc.CallFuture;
-import org.apache.avro.ipc.NettyTransceiver;
+import org.apache.avro.ipc.netty.NettyTransceiver;
 import org.apache.avro.ipc.Transceiver;
 import org.apache.avro.ipc.specific.SpecificRequestor;
 import org.apache.commons.lang.StringUtils;

@@ -19,4 +19,4 @@ derby.log
 nb-configuration.xml
 .DS_Store
 /.mvn/wrapper/maven-wrapper.jar
-devops/*
+devops/**

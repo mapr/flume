@@ -1021,6 +1021,7 @@ limitations under the License.
             <artifactId>javax.servlet-api</artifactId>
           </exclusion>
         </exclusions>
+        <scope>provided</scope>
       </dependency>
 
       <!--  Gson: Java to Json conversion -->

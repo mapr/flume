@@ -75,6 +75,11 @@ limitations under the License.
       <artifactId>flume-ng-sdk</artifactId>
     </dependency>
 
+    <dependency>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+    </dependency>
+
     <!-- pull in flume core only for unit tests. TODO: not ideal -->
     <dependency>
       <groupId>org.apache.flume</groupId>

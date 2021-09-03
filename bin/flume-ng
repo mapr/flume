@@ -175,6 +175,15 @@ add_streams_paths(){
   fi
 }
 
+add_mapr_security_paths(){
+  local MAPR_LIB_DIR="${BASEMAPR}/lib"
+  local MAPR_SECURITY=$(ls ${MAPR_LIB_DIR}/mapr-security-web*.jar 2> /dev/null | grep -v "tests.jar$" )
+  if [ ! -z "$MAPR_SECURITY" ]; then
+    info "Including Mapr Web Security library"
+    FLUME_CLASSPATH="${MAPR_SECURITY}:${FLUME_CLASSPATH}"
+  fi
+}
+
 set_LD_LIBRARY_PATH(){
 #Append the FLUME_JAVA_LIBRARY_PATH to whatever the user may have specified in
 #flume-env.sh
@@ -522,6 +531,7 @@ add_hadoop_paths
 add_HBASE_paths
 add_hive_paths
 add_streams_paths
+add_mapr_security_paths
 
 # prepend conf dir to classpath
 if [ -n "$opt_conf" ]; then

@@ -167,6 +167,12 @@ add_streams_paths(){
     info "Including MapR Streams libraries found in ($MAPR_LIB_DIR) for Streams access"
     FLUME_CLASSPATH="${MAPR_STREAMS}:${STREAMS_CLIENTS}:${FLUME_CLASSPATH}"
   fi
+  local KAFKA_VERSION=$(cat ${BASEMAPR}/kafka/kafkaversion)
+  local KAFKA_EVENTSTREAMS=$(ls ${BASEMAPR}/kafka/kafka-${KAFKA_VERSION}/libs/kafka-eventstreams*.jar 2> /dev/null)
+  if [ ! -z "$KAFKA_EVENTSTREAMS" ]; then
+    info "Including Kafka Event Streams libraries for Streams access"
+    FLUME_CLASSPATH="${KAFKA_EVENTSTREAMS}:${FLUME_CLASSPATH}"
+  fi
 }
 
 set_LD_LIBRARY_PATH(){

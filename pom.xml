@@ -27,7 +27,7 @@ limitations under the License.
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.flume</groupId>
   <artifactId>flume-parent</artifactId>
-  <version>1.9.0.0-mapr-SNAPSHOT</version>
+  <version>1.9.0.0-eep-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Flume</name>
@@ -68,8 +68,8 @@ limitations under the License.
     <geronimo-jms.version>1.1.1</geronimo-jms.version>
     <gson.version>2.2.2</gson.version>
     <guava.version>28.2-jre</guava.version>
-    <hadoop.version>2.7.4.0-mapr-1908-SNAPSHOT</hadoop.version>
-    <hbase.version>1.4.12.0-mapr-SNAPSHOT</hbase.version>
+    <hadoop.version>2.7.6.0-eep-800-SNAPSHOT</hadoop.version>
+    <hbase.version>1.4.13.0-eep-SNAPSHOT</hbase.version>
     <hbase2.jetty.version>9.3.19.v20170502</hbase2.jetty.version>
     <hbase2.version>2.0.0</hbase2.version>
     <httpcore.version>4.4.6</httpcore.version>
@@ -80,9 +80,9 @@ limitations under the License.
     <jetty.version>9.4.6.v20170531</jetty.version>
     <joda-time.version>2.9.9</joda-time.version>
     <junit.version>4.10</junit.version>
-    <kafka.version>2.6.1.0-mapr-SNAPSHOT</kafka.version>
+    <kafka.version>2.6.1.0-eep-SNAPSHOT</kafka.version>
     <kite.version>1.0.0</kite.version>
-    <hive.version>2.3.7-mapr-SNAPSHOT</hive.version>
+    <hive.version>2.3.9-eep-SNAPSHOT</hive.version>
     <lifecycle-mapping.version>1.0.0</lifecycle-mapping.version>
     <log4j-extras.version>1.1</log4j-extras.version>
     <log4j-log4j.version>1.2.17</log4j-log4j.version>

@@ -43,6 +43,7 @@
     <flume-jdbc.version>2.0.0-SNAPSHOT</flume-jdbc.version>
     <flume-jms.version>2.0.0-SNAPSHOT</flume-jms.version>
     <flume-kafka.version>2.0.0-SNAPSHOT</flume-kafka.version>
+    <flume-mongodb.version>2.0.0-SNAPSHOT</flume-mongodb.version>
     <flume-scribe.version>2.0.0-SNAPSHOT</flume-scribe.version>
     <flume-spring-boot.version>2.1.0-SNAPSHOT</flume-spring-boot.version>
     <flume-taildir.version>2.0.0-SNAPSHOT</flume-taildir.version>
@@ -192,6 +193,11 @@
         <groupId>org.apache.flume</groupId>
         <artifactId>flume-kafka-source</artifactId>
         <version>${flume-kafka.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.flume</groupId>
+        <artifactId>flume-mongodb-sink</artifactId>
+        <version>${flume-mongodb.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.flume.flume-ng-sources</groupId>
